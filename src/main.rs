@@ -27,6 +27,9 @@ fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
+            justify_content: JustifyContent::End,
+            align_items: AlignItems::End,
+            padding: UiRect::all(Val::Px(10.0)), 
             ..default()
         },
         DespawnOnExit(GameState::Game), // автоудаление при выходе из Game
@@ -38,15 +41,25 @@ fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite::from_image(asset_server.load("room.png")),
         Transform {
-            translation: Vec3::new(0.0, 0.0, 0.0), // позиция (Godot position)
-            scale: Vec3::new(1.2, 1.2, 1.0),      // Godot scale
+            translation: Vec3::new(-250.0, 0.0, 0.0),
+            scale: Vec3::new(1.2, 1.2, 1.0),
+            ..default()
+        },
+        DespawnOnExit(GameState::Game),
+    ));
+
+    commands.spawn((
+        Sprite::from_image(asset_server.load("main_fon.png")),
+        Transform {
+            translation: Vec3::new(0.0, 0.0, 0.0),
+            scale: Vec3::new(3.0, 3.0, 1.0),
             ..default()
         },
         DespawnOnExit(GameState::Game),
     ));
 }
 
-fn spawn_menu_ui(mut commands: Commands){
+fn spawn_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>){
     //Ui
     commands.spawn((
         Node {
@@ -64,4 +77,14 @@ fn spawn_menu_ui(mut commands: Commands){
         draw_button(parent, "Play", MenuAction::Play);
         draw_button(parent, "Quit", MenuAction::Quit);
     });
+
+    commands.spawn((
+        Sprite::from_image(asset_server.load("main_fon.png")),
+        Transform {
+            translation: Vec3::new(0.0, 0.0, 0.0),
+            scale: Vec3::new(3.0, 3.0, 1.0),
+            ..default()
+        },
+        DespawnOnExit(GameState::Menu),
+    ));
 }
