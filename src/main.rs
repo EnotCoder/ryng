@@ -22,7 +22,7 @@ fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn spawn_game_ui(mut commands: Commands) {
+fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Node {
             width: Val::Percent(100.0),
@@ -34,6 +34,16 @@ fn spawn_game_ui(mut commands: Commands) {
     .with_children(|parent| {
         draw_button(parent, "Back", GameAction::Back);
     });
+
+    commands.spawn((
+        Sprite::from_image(asset_server.load("room.png")),
+        Transform {
+            translation: Vec3::new(0.0, 0.0, 0.0), // позиция (Godot position)
+            scale: Vec3::new(1.2, 1.2, 1.0),      // Godot scale
+            ..default()
+        },
+        DespawnOnExit(GameState::Game),
+    ));
 }
 
 fn spawn_menu_ui(mut commands: Commands){
