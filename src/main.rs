@@ -1,32 +1,57 @@
 use bevy::prelude::*;
 
 mod button;
+mod state;
+
 use crate::button::*;
+use crate::state::*;
 
 fn main() {
     //Create app
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, spawn_menu_ui)
-        .add_systems(Update, button_system)
+        .init_state::<GameState>()
+        .add_systems(Startup, spawn_camera)
+        .add_systems(OnEnter(GameState::Menu), spawn_menu_ui)
+        .add_systems(OnEnter(GameState::Game), spawn_game_ui)
+        .add_systems(Update, (button_system, game_button_system))
         .run();
 }
 
-fn spawn_menu_ui(mut commands: Commands){
+fn spawn_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
 
-    //Ui
-    commands.spawn(Node {
-        width: Val::Percent(100.0),
-        height: Val::Percent(100.0),
-        justify_content: JustifyContent::Center,
-        align_items: AlignItems::Center,
-        column_gap: Val::Px(BUTTON_GAP),
-        ..default()
-    })
+fn spawn_game_ui(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        DespawnOnExit(GameState::Game), // автоудаление при выходе из Game
+    ))
     .with_children(|parent| {
-        draw_button(parent, "Settings", on_click_settings);
-        draw_button(parent, "Play", on_click_play);
-        draw_button(parent, "Quit", on_click_quit);
+        draw_button(parent, "Back", GameAction::Back);
+    });
+}
+
+fn spawn_menu_ui(mut commands: Commands){
+    //Ui
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            column_gap: Val::Px(BUTTON_GAP),
+            ..default()
+        },
+        DespawnOnExit(GameState::Menu),
+    ))
+    .with_children(|parent| {
+        draw_button(parent, "Settings", MenuAction::Settings);
+        draw_button(parent, "Play", MenuAction::Play);
+        draw_button(parent, "Quit", MenuAction::Quit);
     });
 }
