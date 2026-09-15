@@ -75,7 +75,7 @@ fn spawn_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>){
     .with_children(|parent| {
         draw_button(parent, "Settings", MenuAction::Settings);
         draw_button(parent, "Play", MenuAction::Play);
-        draw_button(parent, "Quit", MenuAction::Quit);
+        draw_button_with_texture(parent, "Quit", MenuAction::Quit, &asset_server);
     });
 
     commands.spawn((
