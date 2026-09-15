@@ -79,6 +79,16 @@ fn spawn_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>){
     });
 
     commands.spawn((
+        Sprite::from_image(asset_server.load("game_logo.png")),
+        Transform {
+            translation: Vec3::new(0.0, 200.0, 1.0),
+            scale: Vec3::new(1.5, 1.5, 1.5),
+            ..default()
+        },
+        DespawnOnExit(GameState::Menu),
+    ));
+
+    commands.spawn((
         Sprite::from_image(asset_server.load("main_fon.png")),
         Transform {
             translation: Vec3::new(0.0, 0.0, 0.0),
