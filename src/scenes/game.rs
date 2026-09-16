@@ -177,15 +177,15 @@ pub fn game_hotspot_system(
 
 pub fn game_button_system(
     mut query: Query<
-        (Entity, &Interaction, &GameAction, Option<&mut BackgroundColor>, Option<&mut ImageNode>),
+        (Entity, &Interaction, &GameAction, Option<&mut BackgroundColor>, Option<&mut ImageNode>, Option<&mut Node>),
         (Changed<Interaction>, With<Button>),
     >,
     mut was_pressed: Local<HashSet<Entity>>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    for (entity, interaction, action, bg, img) in &mut query {
+    for (entity, interaction, action, bg, img, node) in &mut query {
         let visual = buttons::click_visual(interaction, &mut was_pressed, entity);
-        if buttons::apply_visual(visual, bg, img) {
+        if buttons::apply_visual(visual, bg, img, node) {
             fire_game(action, &mut next_state);
         }
     }

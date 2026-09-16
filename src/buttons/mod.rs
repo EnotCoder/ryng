@@ -10,6 +10,8 @@ const HOVERED_TINT: Color = Color::srgb(0.8, 0.8, 0.8);
 const PRESSED_TINT: Color = Color::srgb(0.5, 0.5, 0.5);
 
 pub const BUTTON_SIZE: Vec2 = Vec2::new(150.0, 50.0);
+pub const BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(160.0, 60.0);
+
 pub const BUTTON_GAP: f32 = 50.0;
 pub const FONT_SIZE: FontSize = FontSize::Px(20.0);
 
@@ -53,6 +55,7 @@ pub(crate) fn spawn_button_core(
 pub(crate) struct VisualState {
     bg_color: Color,
     tint: Color,
+    size: Vec2,
     released: bool,
 }
 
@@ -64,15 +67,15 @@ pub(crate) fn click_visual(
     match *interaction {
         Interaction::Pressed => {
             was_pressed.insert(entity);
-            VisualState { bg_color: PRESSED_BUTTON, tint: PRESSED_TINT, released: false }
+            VisualState { bg_color: PRESSED_BUTTON, tint: PRESSED_TINT, size: BUTTON_HOVERED_SIZE, released: false }
         }
         Interaction::Hovered => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: HOVERED_BUTTON, tint: HOVERED_TINT, released }
+            VisualState { bg_color: HOVERED_BUTTON, tint: HOVERED_TINT, size: BUTTON_HOVERED_SIZE, released }
         }
         Interaction::None => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: NORMAL_BUTTON, tint: NORMAL_TINT, released }
+            VisualState { bg_color: NORMAL_BUTTON, tint: NORMAL_TINT, size: BUTTON_SIZE, released }
         }
     }
 }
@@ -82,8 +85,13 @@ pub(crate) fn apply_visual(
     visual: VisualState,
     bg: Option<Mut<'_, BackgroundColor>>,
     img: Option<Mut<'_, ImageNode>>,
+    node: Option<Mut<'_, Node>>,
 ) -> bool {
     if let Some(mut bg) = bg { bg.0 = visual.bg_color; }
     if let Some(mut img) = img { img.color = visual.tint; }
+    if let Some(mut node) = node {
+        node.width = Val::Px(visual.size.x);
+        node.height = Val::Px(visual.size.y);
+    }
     visual.released
 }
