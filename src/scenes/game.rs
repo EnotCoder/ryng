@@ -26,7 +26,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 
     commands.spawn((
-        Sprite::from_image(asset_server.load("room.png")),
+        Sprite::from_image(asset_server.load("tex/rooms/street_to_home.png")),
         Transform {
             translation: Vec3::new(-250.0, 0.0, 0.0),
             scale: Vec3::new(1.2, 1.2, 1.0),
@@ -36,7 +36,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 
     commands.spawn((
-        Sprite::from_image(asset_server.load("main_fon.png")),
+        Sprite::from_image(asset_server.load("tex/main_fon.png")),
         Transform {
             translation: Vec3::new(0.0, 0.0, 0.0),
             scale: Vec3::new(3.0, 3.0, 1.0),

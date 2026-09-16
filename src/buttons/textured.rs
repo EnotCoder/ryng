@@ -13,7 +13,7 @@ pub fn draw_button_with_texture(
         text,
         action,
         ImageNode {
-            image: asset_server.load("button_tex.png"),
+            image: asset_server.load("tex/ui/button_tex.png"),
             image_mode: NodeImageMode::Stretch,
             ..default()
         },
