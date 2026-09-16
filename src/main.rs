@@ -6,6 +6,8 @@ mod state;
 
 use state::GameState;
 
+pub const DEBUG_SHOW_HOTSPOTS: bool = false;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -16,6 +18,7 @@ fn main() {
         .add_systems(Update, (
             scenes::menu::menu_button_system,
             scenes::game::game_button_system,
+            scenes::game::game_hotspot_system,
         ))
         .run();
 }
