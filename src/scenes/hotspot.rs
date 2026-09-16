@@ -13,6 +13,9 @@ pub struct Hotspot;
 #[derive(Component)]
 pub struct Room;
 
+#[derive(Component)]
+pub struct RoomTitle(pub &'static str);
+
 pub struct HotspotDef {
     pub action: HotspotAction,
     pub pos: Vec2,
@@ -25,8 +28,14 @@ pub fn spawn_room(
     room_path: &'static str,
     hotspots: &[HotspotDef],
     pos: Vec3,
+    title: &'static str,
 ) {
-    let mut root = commands.spawn((Room, Transform::from_translation(pos), DespawnOnExit(GameState::Game)));
+    let mut root = commands.spawn((
+        Room,
+        RoomTitle(title),
+        Transform::from_translation(pos),
+        DespawnOnExit(GameState::Game),
+    ));
     let hotspot_color = if crate::DEBUG_SHOW_HOTSPOTS {
         Color::srgba(1.0, 0.0, 0.3, 0.6)
     } else {

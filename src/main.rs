@@ -19,6 +19,7 @@ fn main() {
             scenes::menu::menu_button_system,
             scenes::game::game_button_system,
             scenes::game::game_hotspot_system,
+            scenes::game::update_room_label,
         ))
         .run();
 }

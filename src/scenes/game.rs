@@ -2,12 +2,20 @@ use bevy::prelude::*;
 use std::collections::HashSet;
 
 use crate::buttons;
-use crate::scenes::hotspot::{spawn_room, Hotspot, HotspotAction, HotspotDef, Room};
+use crate::scenes::hotspot::{spawn_room, Hotspot, HotspotAction, HotspotDef, Room, RoomTitle};
 use crate::state::GameState;
 
 #[derive(Component)]
 pub enum GameAction {
     Back,
+}
+
+#[derive(Component)]
+pub struct RoomLabel;
+
+struct RoomDef {
+    title: &'static str,
+    hotspots: Vec<HotspotDef>,
 }
 
 pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -27,12 +35,48 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         buttons::draw_button(parent, "Back", GameAction::Back);
     });
 
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Start,
+            justify_content: JustifyContent::Start,
+            padding: UiRect::all(Val::Px(20.0)),
+            row_gap: Val::Px(8.0),
+            ..default()
+        },
+        Pickable::IGNORE,
+        DespawnOnExit(GameState::Game),
+    ))
+    .with_children(|parent| {
+        parent.spawn((
+            Text::new("Point & Click"),
+            TextFont {
+                font_size: FontSize::Px(20.0),
+                ..default()
+            },
+            TextColor(Color::WHITE),
+        ));
+        parent.spawn((
+            Text::new(""),
+            TextFont {
+                font_size: FontSize::Px(16.0),
+                ..default()
+            },
+            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.85)),
+            RoomLabel,
+        ));
+    });
+
+    let def = room_def("tex/rooms/street_to_home.png");
     spawn_room(
         &mut commands,
         &asset_server,
         "tex/rooms/street_to_home.png",
-        &room_layout("tex/rooms/street_to_home.png"),
+        &def.hotspots,
         Vec3::new(-250.0, 0.0, 0.0),
+        def.title,
     );
 
     commands.spawn((
@@ -46,16 +90,56 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     ));
 }
 
-fn room_layout(path: &'static str) -> Vec<HotspotDef> {
+fn room_def(path: &'static str) -> RoomDef {
     match path {
-        "tex/rooms/street_to_home.png" => vec![
-            HotspotDef {
-                action: HotspotAction::GoToRoom("tex/rooms/room_with_elevator_floor_my.png"),
-                pos: Vec2::new(0.0, 0.0),
-                size: Vec2::new(200.0, 300.0),
-            },
-        ],
-        _ => Vec::new(),
+        "tex/rooms/street_to_home.png" => RoomDef {
+            title: "Street in front of home",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/room_with_elevator_floor_my.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/door_my_home.png" => RoomDef {
+            title: "Door - my home",
+            hotspots: Vec::new(),
+        },
+        "tex/rooms/door_nighbor_home.png" => RoomDef {
+            title: "Door - neighbor's apartment",
+            hotspots: Vec::new(),
+        },
+        "tex/rooms/elevator_Inside.png" => RoomDef {
+            title: "Inside elevator",
+            hotspots: Vec::new(),
+        },
+        "tex/rooms/room_with_elevator_floor_1.png" => RoomDef {
+            title: "Hall - 1st floor",
+            hotspots: Vec::new(),
+        },
+        "tex/rooms/room_with_elevator_floor_my.png" => RoomDef {
+            title: "Hall - my floor",
+            hotspots: Vec::new(),
+        },
+        _ => RoomDef {
+            title: "Unknown room",
+            hotspots: Vec::new(),
+        },
+    }
+}
+
+pub fn update_room_label(
+    rooms: Query<&RoomTitle, With<Room>>,
+    mut labels: Query<&mut Text, With<RoomLabel>>,
+) {
+    let Ok(title) = rooms.single() else {
+        return;
+    };
+    for mut label in &mut labels {
+        if label.0.as_str() != title.0 {
+            label.0 = title.0.to_string();
+        }
     }
 }
 
@@ -73,10 +157,21 @@ pub fn game_hotspot_system(
         }
     }
     if let Some(path) = next_room {
+        if crate::DEBUG_SHOW_HOTSPOTS {
+            eprintln!("DEBUG: hotspot clicked, room -> {path}");
+        }
         if let Ok(old) = rooms.single() {
             commands.entity(old).despawn();
         }
-        spawn_room(&mut commands, &asset_server, path, &room_layout(path), Vec3::new(-250.0, 0.0, 0.0));
+        let def = room_def(path);
+        spawn_room(
+            &mut commands,
+            &asset_server,
+            path,
+            &def.hotspots,
+            Vec3::new(-250.0, 0.0, 0.0),
+            def.title,
+        );
     }
 }
 
