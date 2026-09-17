@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use std::collections::HashSet;
 
 use crate::buttons;
+use crate::scenes::loading::spawn_loading_overlay;
 use crate::state::GameState;
 use crate::UiScale;
 
@@ -54,6 +55,9 @@ pub fn spawn_menu_ui(
         },
         DespawnOnExit(GameState::Menu),
     ));
+
+    let fon = asset_server.load("tex/main_fon.png");
+    spawn_loading_overlay(&mut commands, vec![fon], s, GameState::Menu);
 }
 
 pub fn menu_button_system(

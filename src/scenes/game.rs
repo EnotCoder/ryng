@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use crate::buttons;
 use crate::scenes::fade::{spawn_fade_overlay, FADE_DURATION, FadePhase, RoomFade};
 use crate::scenes::hotspot::{spawn_room, Hotspot, HotspotAction, HotspotDef, Room, RoomTitle};
+use crate::scenes::loading::spawn_loading_overlay;
 use crate::state::GameState;
 use crate::UiScale;
 
@@ -77,6 +78,7 @@ pub fn spawn_game_ui(
     });
 
     let def = room_def("tex/rooms/floor_1/street_to_home_1.png");
+    let room_handle = asset_server.load("tex/rooms/floor_1/street_to_home_1.png");
     spawn_room(
         &mut commands,
         &asset_server,
@@ -97,6 +99,7 @@ pub fn spawn_game_ui(
     ));
 
     spawn_fade_overlay(&mut commands);
+    spawn_loading_overlay(&mut commands, vec![room_handle], s, GameState::Game);
 }
 
 pub(crate) fn room_def(path: &'static str) -> RoomDef {

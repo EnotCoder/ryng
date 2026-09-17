@@ -36,6 +36,7 @@ pub fn main() {
             scenes::game::game_hotspot_system,
             scenes::fade::room_fade_system,
             scenes::game::update_room_label,
+            scenes::loading::loading_system,
         ))
         .run();
 }
