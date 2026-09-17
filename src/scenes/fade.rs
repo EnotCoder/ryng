@@ -42,6 +42,7 @@ pub fn room_fade_system(
     mut fade: ResMut<RoomFade>,
     mut overlays: Query<&mut BackgroundColor, With<FadeOverlay>>,
     rooms: Query<Entity, With<Room>>,
+    active_sounds: Query<Entity, With<crate::scenes::sound::PlayingTransitionSound>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
@@ -66,6 +67,14 @@ pub fn room_fade_system(
                         &def.hotspots,
                         Vec3::new(0.0, 0.0, 0.0),
                         def.title,
+                    );
+                    for sound in &active_sounds {
+                        commands.entity(sound).despawn();
+                    }
+                    crate::scenes::sound::play_transition_sound(
+                        &mut commands,
+                        &asset_server,
+                        &def.sound,
                     );
                 }
             }

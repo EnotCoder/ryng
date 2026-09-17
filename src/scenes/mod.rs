@@ -3,3 +3,4 @@ pub mod game;
 pub mod hotspot;
 pub mod loading;
 pub mod menu;
+pub mod sound;

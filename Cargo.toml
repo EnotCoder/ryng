@@ -7,8 +7,10 @@ edition = "2024"
 name = "app"
 crate-type = ["lib", "cdylib"]
 
+
+
 [dependencies]
-bevy = { version = "0.19.1", features = ["android-game-activity"] }
+bevy = { version = "0.19.1", features = ["android-game-activity", "mp3"] }
 
 [profile.release]
 lto = "thin"
