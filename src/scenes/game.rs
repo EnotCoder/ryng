@@ -130,7 +130,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
         },
         "tex/rooms/floor_1/room_concierge.png" => RoomDef {
             title: "Hall with concierge",
-            sound: TransitionSound::NextRoom,
+            sound: TransitionSound::NextRoomWithOpenDoor,
             hotspots: vec![
                 HotspotDef {
                     action: HotspotAction::GoToRoom("tex/rooms/floor_1/room_with_elevator_floor_1.png"),
@@ -141,7 +141,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
         },
         "tex/rooms/floor_1/room_with_elevator_floor_1.png" => RoomDef {
             title: "Hall - 1st floor",
-            sound: TransitionSound::NextRoom,
+            sound: TransitionSound::NextRoomWithOpenDoor,
             hotspots: vec![
                 HotspotDef {
                     action: HotspotAction::GoToRoom("tex/rooms/elevator_Inside.png"),
@@ -163,7 +163,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
         },
         "tex/rooms/basement/basement_with_elevator.png" => RoomDef {
             title: "Basement - elevator hall",
-            sound: TransitionSound::NextRoom,
+            sound: TransitionSound::NextRoomWithOpenDoor,
             hotspots: vec![
                 HotspotDef {
                     action: HotspotAction::GoToRoom("tex/rooms/basement/basement_stairs.png"),
@@ -229,7 +229,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
         },
         "tex/rooms/my_floor/open_door_my_home.png" => RoomDef {
             title: "Inside my home",
-            sound: TransitionSound::NextRoomWithOpenDoor,
+            sound: TransitionSound::None,
             hotspots: Vec::new(),
         },
         _ => RoomDef {
