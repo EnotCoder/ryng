@@ -64,7 +64,7 @@ pub fn room_fade_system(
                         &asset_server,
                         path,
                         &def.hotspots,
-                        Vec3::new(-250.0, 0.0, 0.0),
+                        Vec3::new(0.0, 0.0, 0.0),
                         def.title,
                     );
                 }

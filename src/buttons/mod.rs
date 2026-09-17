@@ -26,14 +26,15 @@ pub(crate) fn spawn_button_core(
     text: &str,
     action: impl Component,
     background: impl Bundle,
+    ui_scale: f32,
 ) {
     parent.spawn((
         Button,
         action,
         background,
         Node {
-            width: Val::Px(BUTTON_SIZE.x),
-            height: Val::Px(BUTTON_SIZE.y),
+            width: Val::Px(BUTTON_SIZE.x * ui_scale),
+            height: Val::Px(BUTTON_SIZE.y * ui_scale),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
             ..default()
@@ -44,7 +45,13 @@ pub(crate) fn spawn_button_core(
         parent.spawn((
             Text::new(text),
             TextFont {
-                font_size: FONT_SIZE,
+                font_size: {
+                    if let FontSize::Px(size) = FONT_SIZE {
+                        FontSize::Px(size * ui_scale)
+                    } else {
+                        FONT_SIZE
+                    }
+                },
                 ..default()
             },
             TextColor(Color::WHITE),
@@ -63,19 +70,20 @@ pub(crate) fn click_visual(
     interaction: &Interaction,
     was_pressed: &mut HashSet<Entity>,
     entity: Entity,
+    ui_scale: f32,
 ) -> VisualState {
     match *interaction {
         Interaction::Pressed => {
             was_pressed.insert(entity);
-            VisualState { bg_color: PRESSED_BUTTON, tint: PRESSED_TINT, size: BUTTON_HOVERED_SIZE, released: false }
+            VisualState { bg_color: PRESSED_BUTTON, tint: PRESSED_TINT, size: BUTTON_HOVERED_SIZE * ui_scale, released: false }
         }
         Interaction::Hovered => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: HOVERED_BUTTON, tint: HOVERED_TINT, size: BUTTON_HOVERED_SIZE, released }
+            VisualState { bg_color: HOVERED_BUTTON, tint: HOVERED_TINT, size: BUTTON_HOVERED_SIZE * ui_scale, released }
         }
         Interaction::None => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: NORMAL_BUTTON, tint: NORMAL_TINT, size: BUTTON_SIZE, released }
+            VisualState { bg_color: NORMAL_BUTTON, tint: NORMAL_TINT, size: BUTTON_SIZE * ui_scale, released }
         }
     }
 }

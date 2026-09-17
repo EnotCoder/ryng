@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use crate::buttons;
 use crate::state::GameState;
+use crate::UiScale;
 
 #[derive(Component)]
 pub enum MenuAction {
@@ -11,22 +12,27 @@ pub enum MenuAction {
     Quit,
 }
 
-pub fn spawn_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_menu_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    ui_scale: Res<UiScale>,
+) {
+    let s = ui_scale.0;
     commands.spawn((
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
-            column_gap: Val::Px(buttons::BUTTON_GAP),
+            column_gap: Val::Px(buttons::BUTTON_GAP * s),
             ..default()
         },
         DespawnOnExit(GameState::Menu),
     ))
     .with_children(|parent| {
-        buttons::draw_button_with_texture(parent, "Settings", MenuAction::Settings, &asset_server);
-        buttons::draw_button_with_texture(parent, "Play", MenuAction::Play, &asset_server);
-        buttons::draw_button_with_texture(parent, "Quit", MenuAction::Quit, &asset_server);
+        buttons::draw_button_with_texture(parent, "Settings", MenuAction::Settings, &asset_server, s);
+        buttons::draw_button_with_texture(parent, "Play", MenuAction::Play, &asset_server, s);
+        buttons::draw_button_with_texture(parent, "Quit", MenuAction::Quit, &asset_server, s);
     });
 
     commands.spawn((
@@ -58,9 +64,10 @@ pub fn menu_button_system(
     mut was_pressed: Local<HashSet<Entity>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut exit: MessageWriter<AppExit>,
+    ui_scale: Res<UiScale>,
 ) {
     for (entity, interaction, action, bg, img, node) in &mut query {
-        let visual = buttons::click_visual(interaction, &mut was_pressed, entity);
+        let visual = buttons::click_visual(interaction, &mut was_pressed, entity, ui_scale.0);
         if buttons::apply_visual(visual, bg, img, node) {
             fire_menu(action, &mut next_state, &mut exit);
         }

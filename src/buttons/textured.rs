@@ -7,6 +7,7 @@ pub fn draw_button_with_texture(
     text: &str,
     action: impl Component,
     asset_server: &Res<AssetServer>,
+    ui_scale: f32,
 ) {
     spawn_button_core(
         parent,
@@ -17,6 +18,7 @@ pub fn draw_button_with_texture(
             image_mode: NodeImageMode::Stretch,
             ..default()
         },
+        ui_scale,
     );
 }
 
@@ -25,6 +27,7 @@ pub fn draw_button_with_red_texture(
     text: &str,
     action: impl Component,
     asset_server: &Res<AssetServer>,
+    ui_scale: f32,
 ) {
     spawn_button_core(
         parent,
@@ -35,5 +38,6 @@ pub fn draw_button_with_red_texture(
             image_mode: NodeImageMode::Stretch,
             ..default()
         },
+        ui_scale,
     );
 }

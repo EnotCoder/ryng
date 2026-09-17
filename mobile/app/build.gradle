@@ -1,0 +1,43 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.ryng.game'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.ryng.game"
+        minSdk 26
+        targetSdk 33
+        versionCode 1
+        versionName "0.1.0"
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildFeatures {
+        prefab true
+    }
+    sourceSets {
+        main {
+            assets.srcDirs += files('../../assets')
+        }
+    }
+}
+
+dependencies {
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.games.activity
+}

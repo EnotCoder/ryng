@@ -3,5 +3,13 @@ name = "app"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "app"
+crate-type = ["lib", "cdylib"]
+
 [dependencies]
-bevy = "0.19.1"
+bevy = { version = "0.19.1", features = ["android-game-activity"] }
+
+[profile.release]
+lto = "thin"
+strip = true

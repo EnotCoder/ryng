@@ -5,6 +5,7 @@ use crate::buttons;
 use crate::scenes::fade::{spawn_fade_overlay, FADE_DURATION, FadePhase, RoomFade};
 use crate::scenes::hotspot::{spawn_room, Hotspot, HotspotAction, HotspotDef, Room, RoomTitle};
 use crate::state::GameState;
+use crate::UiScale;
 
 #[derive(Component)]
 pub enum GameAction {
@@ -19,21 +20,26 @@ pub(crate) struct RoomDef {
     pub hotspots: Vec<HotspotDef>,
 }
 
-pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_game_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    ui_scale: Res<UiScale>,
+) {
+    let s = ui_scale.0;
     commands.spawn((
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             justify_content: JustifyContent::End,
             align_items: AlignItems::End,
-            padding: UiRect::all(Val::Px(10.0)),
+            padding: UiRect::all(Val::Px(10.0 * s)),
             ..default()
         },
         Pickable::IGNORE,
         DespawnOnExit(GameState::Game),
     ))
     .with_children(|parent| {
-        buttons::draw_button_with_red_texture(parent, "Back", GameAction::Back, &asset_server);
+        buttons::draw_button_with_red_texture(parent, "Back", GameAction::Back, &asset_server, s);
     });
 
     commands.spawn((
@@ -43,8 +49,8 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Start,
             justify_content: JustifyContent::Start,
-            padding: UiRect::all(Val::Px(20.0)),
-            row_gap: Val::Px(8.0),
+            padding: UiRect::all(Val::Px(20.0 * s)),
+            row_gap: Val::Px(8.0 * s),
             ..default()
         },
         Pickable::IGNORE,
@@ -54,7 +60,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         parent.spawn((
             Text::new("You are at"),
             TextFont {
-                font_size: FontSize::Px(20.0),
+                font_size: FontSize::Px(20.0 * s),
                 ..default()
             },
             TextColor(Color::WHITE),
@@ -62,7 +68,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         parent.spawn((
             Text::new(""),
             TextFont {
-                font_size: FontSize::Px(16.0),
+                font_size: FontSize::Px(16.0 * s),
                 ..default()
             },
             TextColor(Color::srgba(1.0, 1.0, 1.0, 0.85)),
@@ -175,9 +181,10 @@ pub fn game_button_system(
     >,
     mut was_pressed: Local<HashSet<Entity>>,
     mut next_state: ResMut<NextState<GameState>>,
+    ui_scale: Res<UiScale>,
 ) {
     for (entity, interaction, action, bg, img, node) in &mut query {
-        let visual = buttons::click_visual(interaction, &mut was_pressed, entity);
+        let visual = buttons::click_visual(interaction, &mut was_pressed, entity, ui_scale.0);
         if buttons::apply_visual(visual, bg, img, node) {
             fire_game(action, &mut next_state);
         }
