@@ -33,7 +33,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         DespawnOnExit(GameState::Game),
     ))
     .with_children(|parent| {
-        buttons::draw_button(parent, "Back", GameAction::Back);
+        buttons::draw_button_with_red_texture(parent, "Back", GameAction::Back, &asset_server);
     });
 
     commands.spawn((
@@ -52,7 +52,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     ))
     .with_children(|parent| {
         parent.spawn((
-            Text::new("Point & Click"),
+            Text::new("You are at"),
             TextFont {
                 font_size: FontSize::Px(20.0),
                 ..default()
@@ -76,7 +76,7 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         &asset_server,
         "tex/rooms/street_to_home.png",
         &def.hotspots,
-        Vec3::new(-250.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 0.0),
         def.title,
     );
 

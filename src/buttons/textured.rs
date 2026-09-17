@@ -19,3 +19,21 @@ pub fn draw_button_with_texture(
         },
     );
 }
+
+pub fn draw_button_with_red_texture(
+    parent: &mut ChildSpawnerCommands<'_>,
+    text: &str,
+    action: impl Component,
+    asset_server: &Res<AssetServer>,
+) {
+    spawn_button_core(
+        parent,
+        text,
+        action,
+        ImageNode {
+            image: asset_server.load("tex/ui/button_red_tex.png"),
+            image_mode: NodeImageMode::Stretch,
+            ..default()
+        },
+    );
+}

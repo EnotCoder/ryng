@@ -19,7 +19,7 @@ mod plain;
 mod textured;
 
 pub use plain::draw_button;
-pub use textured::draw_button_with_texture;
+pub use textured::{draw_button_with_texture, draw_button_with_red_texture};
 
 pub(crate) fn spawn_button_core(
     parent: &mut ChildSpawnerCommands<'_>,
