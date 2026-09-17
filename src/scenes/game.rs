@@ -76,11 +76,11 @@ pub fn spawn_game_ui(
         ));
     });
 
-    let def = room_def("tex/rooms/street_to_home.png");
+    let def = room_def("tex/rooms/floor_1/street_to_home_1.png");
     spawn_room(
         &mut commands,
         &asset_server,
-        "tex/rooms/street_to_home.png",
+        "tex/rooms/floor_1/street_to_home_1.png",
         &def.hotspots,
         Vec3::new(0.0, 0.0, 0.0),
         def.title,
@@ -101,35 +101,37 @@ pub fn spawn_game_ui(
 
 pub(crate) fn room_def(path: &'static str) -> RoomDef {
     match path {
-        "tex/rooms/street_to_home.png" => RoomDef {
+        "tex/rooms/floor_1/street_to_home_1.png" => RoomDef {
             title: "Street in front of home",
             hotspots: vec![
                 HotspotDef {
-                    action: HotspotAction::GoToRoom("tex/rooms/room_with_elevator_floor_1.png"),
+                    action: HotspotAction::GoToRoom("tex/rooms/floor_1/street_to_home_2.png"),
                     pos: Vec2::new(0.0, 0.0),
                     size: Vec2::new(200.0, 300.0),
                 },
             ],
         },
-        "tex/rooms/door_my_home.png" => RoomDef {
-            title: "Door - my home",
-            hotspots: Vec::new(),
-        },
-        "tex/rooms/door_nighbor_home.png" => RoomDef {
-            title: "Door - neighbor's apartment",
-            hotspots: Vec::new(),
-        },
-        "tex/rooms/elevator_Inside.png" => RoomDef {
-            title: "Inside elevator",
+        "tex/rooms/floor_1/street_to_home_2.png" => RoomDef {
+            title: "Street in front of home",
             hotspots: vec![
                 HotspotDef {
-                    action: HotspotAction::GoToRoom("tex/rooms/door_my_home.png"),
+                    action: HotspotAction::GoToRoom("tex/rooms/floor_1/room_concierge.png"),
                     pos: Vec2::new(0.0, 0.0),
                     size: Vec2::new(200.0, 300.0),
                 },
             ],
         },
-        "tex/rooms/room_with_elevator_floor_1.png" => RoomDef {
+        "tex/rooms/floor_1/room_concierge.png" => RoomDef {
+            title: "Hall with concierge",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/floor_1/room_with_elevator_floor_1.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/floor_1/room_with_elevator_floor_1.png" => RoomDef {
             title: "Hall - 1st floor",
             hotspots: vec![
                 HotspotDef {
@@ -139,8 +141,78 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 },
             ],
         },
-        "tex/rooms/room_with_elevator_floor_my.png" => RoomDef {
-            title: "Hall - my floor",
+        "tex/rooms/elevator_Inside.png" => RoomDef {
+            title: "Inside elevator",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/basement/basement_with_elevator.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/basement/basement_with_elevator.png" => RoomDef {
+            title: "Basement - elevator hall",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/basement/basement_stairs.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/basement/basement_stairs.png" => RoomDef {
+            title: "Basement - stairs",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/floor_1/stairs_1_floor.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/floor_1/stairs_1_floor.png" => RoomDef {
+            title: "1st floor - stairs",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/stairs/stairs_1.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/stairs/stairs_1.png" => RoomDef {
+            title: "Stairs - level 1",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/stairs/stairs_2.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/stairs/stairs_2.png" => RoomDef {
+            title: "Stairs - level 2",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/my_floor/door_my_home.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/my_floor/door_my_home.png" => RoomDef {
+            title: "Door - my home",
+            hotspots: vec![
+                HotspotDef {
+                    action: HotspotAction::GoToRoom("tex/rooms/my_floor/open_door_my_home.png"),
+                    pos: Vec2::new(0.0, 0.0),
+                    size: Vec2::new(200.0, 300.0),
+                },
+            ],
+        },
+        "tex/rooms/my_floor/open_door_my_home.png" => RoomDef {
+            title: "Inside my home",
             hotspots: Vec::new(),
         },
         _ => RoomDef {
