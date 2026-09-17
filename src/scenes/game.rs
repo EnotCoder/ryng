@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use std::collections::HashSet;
 
 use crate::buttons;
+use crate::scenes::fade::{spawn_fade_overlay, FADE_DURATION, FadePhase, RoomFade};
 use crate::scenes::hotspot::{spawn_room, Hotspot, HotspotAction, HotspotDef, Room, RoomTitle};
 use crate::state::GameState;
 
@@ -13,9 +14,9 @@ pub enum GameAction {
 #[derive(Component)]
 pub struct RoomLabel;
 
-struct RoomDef {
-    title: &'static str,
-    hotspots: Vec<HotspotDef>,
+pub(crate) struct RoomDef {
+    pub title: &'static str,
+    pub hotspots: Vec<HotspotDef>,
 }
 
 pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -88,9 +89,11 @@ pub fn spawn_game_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         DespawnOnExit(GameState::Game),
     ));
+
+    spawn_fade_overlay(&mut commands);
 }
 
-fn room_def(path: &'static str) -> RoomDef {
+pub(crate) fn room_def(path: &'static str) -> RoomDef {
     match path {
         "tex/rooms/street_to_home.png" => RoomDef {
             title: "Street in front of home",
@@ -146,9 +149,7 @@ pub fn update_room_label(
 pub fn game_hotspot_system(
     mut clicks: MessageReader<Pointer<Click>>,
     hotspots: Query<&HotspotAction, With<Hotspot>>,
-    rooms: Query<Entity, With<Room>>,
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    mut fade: ResMut<RoomFade>,
 ) {
     let mut next_room = None;
     for click in clicks.read() {
@@ -160,18 +161,10 @@ pub fn game_hotspot_system(
         if crate::DEBUG_SHOW_HOTSPOTS {
             eprintln!("DEBUG: hotspot clicked, room -> {path}");
         }
-        if let Ok(old) = rooms.single() {
-            commands.entity(old).despawn();
+        if matches!(&fade.phase, FadePhase::Idle) {
+            fade.pending = Some(path);
+            fade.phase = FadePhase::FadeOut(Timer::from_seconds(FADE_DURATION, TimerMode::Once));
         }
-        let def = room_def(path);
-        spawn_room(
-            &mut commands,
-            &asset_server,
-            path,
-            &def.hotspots,
-            Vec3::new(-250.0, 0.0, 0.0),
-            def.title,
-        );
     }
 }
 
