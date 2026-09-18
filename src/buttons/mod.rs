@@ -10,7 +10,7 @@ const HOVERED_TINT: Color = Color::srgb(0.8, 0.8, 0.8);
 const PRESSED_TINT: Color = Color::srgb(0.5, 0.5, 0.5);
 
 pub const BUTTON_SIZE: Vec2 = Vec2::new(150.0, 50.0);
-pub const BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(160.0, 60.0);
+pub const BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(155.0, 55.0);
 
 pub const BUTTON_GAP: f32 = 50.0;
 pub const FONT_SIZE: FontSize = FontSize::Px(20.0);
@@ -88,7 +88,7 @@ pub(crate) fn click_visual(
     }
 }
 
-/// Применяет цвета/тинт и возвращает true, если был «полный клик».
+/// Applies colors/tint and returns true if it was a "full click".
 pub(crate) fn apply_visual(
     visual: VisualState,
     bg: Option<Mut<'_, BackgroundColor>>,

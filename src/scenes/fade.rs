@@ -18,6 +18,7 @@ pub enum FadePhase {
 pub struct RoomFade {
     pub phase: FadePhase,
     pub pending: Option<&'static str>,
+    pub auto_timer: Option<(&'static str, Timer)>,
 }
 
 #[derive(Component)]
@@ -49,7 +50,19 @@ pub fn room_fade_system(
     let pending = fade.pending;
     let mut finished = false;
     match &mut fade.phase {
-        FadePhase::Idle => {}
+        FadePhase::Idle => {
+            let auto = fade.auto_timer.take();
+            if let Some((path, mut timer)) = auto {
+                timer.tick(time.delta());
+                if timer.is_finished() {
+                    fade.pending = Some(path);
+                    fade.phase =
+                        FadePhase::FadeOut(Timer::from_seconds(FADE_DURATION, TimerMode::Once));
+                } else {
+                    fade.auto_timer = Some((path, timer));
+                }
+            }
+        }
         FadePhase::FadeOut(timer) => {
             timer.tick(time.delta());
             set_overlay_alpha(&mut overlays, timer.fraction());
@@ -63,11 +76,13 @@ pub fn room_fade_system(
                     spawn_room(
                         &mut commands,
                         &asset_server,
-                        path,
-                        &def.hotspots,
-                        Vec3::new(0.0, 0.0, 0.0),
-                        def.title,
+                        def.variants.clone(),
+                        Vec3::ZERO,
+                        def.interactive,
                     );
+                    fade.auto_timer = def.auto_next.map(|(next, secs)| {
+                        (next, Timer::from_seconds(secs, TimerMode::Once))
+                    });
                     for sound in &active_sounds {
                         commands.entity(sound).despawn();
                     }

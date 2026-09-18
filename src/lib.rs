@@ -1,6 +1,7 @@
 use bevy::camera::{OrthographicProjection, Projection, ScalingMode};
 use bevy::prelude::*;
 
+pub mod acts;
 pub mod buttons;
 pub mod scenes;
 pub mod state;
@@ -25,19 +26,25 @@ pub fn main() {
         .add_plugins(DefaultPlugins)
         .init_state::<GameState>()
         .init_resource::<UiScale>()
+        .init_resource::<acts::Inventory>()
         .init_resource::<scenes::fade::RoomFade>()
         .add_systems(Startup, spawn_camera)
         .add_systems(PreUpdate, update_ui_scale)
         .add_systems(OnEnter(GameState::Menu), scenes::menu::spawn_menu_ui)
         .add_systems(OnEnter(GameState::Game), scenes::game::spawn_game_ui)
-        .add_systems(Update, (
-            scenes::menu::menu_button_system,
-            scenes::game::game_button_system,
-            scenes::game::game_hotspot_system,
-            scenes::fade::room_fade_system,
-            scenes::game::update_room_label,
-            scenes::loading::loading_system,
-        ))
+        .add_systems(Update, scenes::menu::menu_button_system)
+        .add_systems(
+            Update,
+            (
+                scenes::game::game_button_system,
+                scenes::game::carousel_system,
+                scenes::game::game_hotspot_system,
+                scenes::fade::room_fade_system,
+                scenes::game::update_room_label,
+            )
+                .run_if(in_state(GameState::Game)),
+        )
+        .add_systems(Update, scenes::loading::loading_system)
         .run();
 }
 
