@@ -273,8 +273,8 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             "tex/rooms/elevator_Inside.png",
             "Inside elevator",
             "You are inside the elevator.\nAfter 15 seconds of riding, you fall and end up in the basement.",
-            TransitionSound::NextRoom,
-            Some(("tex/rooms/basement/basement_with_elevator.png", 15.0)),
+            TransitionSound::ElevatorFall,
+            Some(("tex/rooms/basement/basement_with_elevator.png", 4.0)),
         ),
         "tex/rooms/basement/basement_with_elevator.png" => story_room(
             "tex/rooms/basement/basement_with_elevator.png",
