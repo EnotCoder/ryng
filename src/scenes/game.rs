@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
-use crate::acts::{default_act, Inventory, Item};
+use crate::acts::{default_act, ActId, CurrentAct, Inventory, Item};
 use crate::buttons;
 use crate::scenes::fade::{spawn_fade_overlay, FADE_DURATION, FadePhase, RoomFade};
 use crate::scenes::hotspot::{
@@ -35,6 +35,7 @@ pub(crate) struct RoomDef {
     pub interactive: bool,
     pub auto_next: Option<(&'static str, f32)>,
     pub variants: Vec<RoomVariant>,
+    pub next_act: Option<ActId>,
 }
 
 fn room_variant(path: &'static str, title: &'static str, story: &'static str, hotspots: Vec<HotspotDef>) -> RoomVariant {
@@ -67,6 +68,7 @@ fn simple_room(
         interactive: true,
         auto_next: None,
         variants: vec![room_variant(path, title, story, hotspots)],
+        next_act: None,
     }
 }
 
@@ -82,6 +84,7 @@ fn story_room(
         interactive: false,
         auto_next,
         variants: vec![room_variant(path, title, story, Vec::new())],
+        next_act: None,
     }
 }
 
@@ -90,9 +93,11 @@ pub fn spawn_game_ui(
     asset_server: Res<AssetServer>,
     ui_scale: Res<UiScale>,
     mut fade: ResMut<RoomFade>,
+    mut current_act: ResMut<CurrentAct>,
 ) {
     let s = ui_scale.0;
     *fade = RoomFade::default();
+    current_act.0 = ActId::ActOne;
 
     commands.spawn((
         Node {
@@ -267,6 +272,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                         Vec::new(),
                     ),
                 ],
+                next_act: None,
             }
         }
         "tex/rooms/elevator_Inside.png" => story_room(
@@ -276,11 +282,55 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             TransitionSound::ElevatorFall,
             Some(("tex/rooms/basement/basement_with_elevator.png", 4.0)),
         ),
-        "tex/rooms/basement/basement_with_elevator.png" => story_room(
-            "tex/rooms/basement/basement_with_elevator.png",
-            "Basement - elevator hall",
-            "You are in the basement.\nThis is where the first act comes to an end.",
-            TransitionSound::None,
+        "tex/rooms/basement/basement_with_elevator.png" => RoomDef {
+            sound: TransitionSound::None,
+            interactive: false,
+            auto_next: Some(("tex/rooms/basement/basement_stairs_left_room.png", 2.0)),
+            variants: vec![room_variant(
+                "tex/rooms/basement/basement_with_elevator.png",
+                "Basement - elevator hall",
+                "You are in the basement.\nThis is where the first act comes to an end.",
+                Vec::new(),
+            )],
+            next_act: Some(ActId::ActTwo),
+        },
+        "tex/rooms/basement/basement_stairs_left_room.png" => {
+            let next = "tex/rooms/basement/basement_stairs.png";
+            simple_room(
+                "tex/rooms/basement/basement_stairs_left_room.png",
+                "Basement Entrance",
+                "",
+                TransitionSound::NextRoom,
+                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+            )
+        }
+        "tex/rooms/basement/basement_stairs.png" => {
+            let next = "tex/rooms/basement/basement_stairs_center_room.png";
+            simple_room(
+                "tex/rooms/basement/basement_stairs.png",
+                "Basement Corridor",
+                "",
+                TransitionSound::NextRoom,
+                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+            )
+        }
+        "tex/rooms/basement/basement_stairs_center_room.png" => RoomDef {
+            sound: TransitionSound::None,
+            interactive: false,
+            auto_next: Some(("tex/rooms/my_floor/room_with_elevator_floor_my.png", 2.0)),
+            variants: vec![room_variant(
+                "tex/rooms/basement/basement_stairs_center_room.png",
+                "Basement Deep",
+                "",
+                Vec::new(),
+            )],
+            next_act: Some(ActId::ActThree),
+        },
+        "tex/rooms/my_floor/room_with_elevator_floor_my.png" => story_room(
+            "tex/rooms/my_floor/room_with_elevator_floor_my.png",
+            "My Floor Lobby",
+            "You reached your floor.",
+            TransitionSound::NextRoom,
             None,
         ),
         _ => story_room(

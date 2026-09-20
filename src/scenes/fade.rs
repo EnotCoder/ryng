@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-
+use crate::acts::{CurrentAct};
 use crate::scenes::game::room_def;
 use crate::scenes::hotspot::{spawn_room, Room};
 use crate::state::GameState;
@@ -46,6 +46,7 @@ pub fn room_fade_system(
     active_sounds: Query<Entity, With<crate::scenes::sound::PlayingTransitionSound>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut current_act: ResMut<CurrentAct>,
 ) {
     let pending = fade.pending;
     let mut finished = false;
@@ -73,6 +74,11 @@ pub fn room_fade_system(
                         commands.entity(old).despawn();
                     }
                     let def = room_def(path);
+
+                    if let Some(next_act_id) = def.next_act {
+                        current_act.0 = next_act_id;
+                    }
+
                     spawn_room(
                         &mut commands,
                         &asset_server,

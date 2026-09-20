@@ -17,6 +17,8 @@ impl Default for Inventory {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ActId {
     ActOne,
+    ActTwo,
+    ActThree,
 }
 
 pub struct Act {
@@ -25,10 +27,35 @@ pub struct Act {
     pub start_room: &'static str,
 }
 
+pub fn get_act(id: ActId) -> Act {
+    match id {
+        ActId::ActOne => Act {
+            id: ActId::ActOne,
+            name: "The Curse",
+            start_room: "tex/rooms/floor_1/street_to_home_1.png",
+        },
+        ActId::ActTwo => Act {
+            id: ActId::ActTwo,
+            name: "The Descent",
+            start_room: "tex/rooms/basement/basement_stairs_left_room.png",
+        },
+        ActId::ActThree => Act {
+            id: ActId::ActThree,
+            name: "The Escape",
+            start_room: "tex/rooms/my_floor/room_with_elevator_floor_my.png",
+        },
+    }
+}
+
 pub fn default_act() -> Act {
-    Act {
-        id: ActId::ActOne,
-        name: "The Curse",
-        start_room: "tex/rooms/floor_1/street_to_home_1.png",
+    get_act(ActId::ActOne)
+}
+
+#[derive(Resource, Default)]
+pub struct CurrentAct(pub ActId);
+
+impl Default for ActId {
+    fn default() -> Self {
+        ActId::ActOne
     }
 }

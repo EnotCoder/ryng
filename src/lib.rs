@@ -27,6 +27,7 @@ pub fn main() {
         .init_state::<GameState>()
         .init_resource::<UiScale>()
         .init_resource::<acts::Inventory>()
+        .init_resource::<acts::CurrentAct>()
         .init_resource::<scenes::fade::RoomFade>()
         .add_systems(Startup, spawn_camera)
         .add_systems(PreUpdate, update_ui_scale)
