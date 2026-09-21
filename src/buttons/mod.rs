@@ -19,7 +19,7 @@ mod plain;
 mod textured;
 
 pub use plain::draw_button;
-pub use textured::{draw_button_with_texture, draw_button_with_red_texture};
+pub use textured::{draw_button_with_red_texture, draw_button_with_texture};
 
 pub(crate) fn spawn_button_core(
     parent: &mut ChildSpawnerCommands<'_>,
@@ -28,35 +28,36 @@ pub(crate) fn spawn_button_core(
     background: impl Bundle,
     ui_scale: f32,
 ) {
-    parent.spawn((
-        Button,
-        action,
-        background,
-        Node {
-            width: Val::Px(BUTTON_SIZE.x * ui_scale),
-            height: Val::Px(BUTTON_SIZE.y * ui_scale),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        Interaction::default(),
-    ))
-    .with_children(|parent| {
-        parent.spawn((
-            Text::new(text),
-            TextFont {
-                font_size: {
-                    if let FontSize::Px(size) = FONT_SIZE {
-                        FontSize::Px(size * ui_scale)
-                    } else {
-                        FONT_SIZE
-                    }
-                },
+    parent
+        .spawn((
+            Button,
+            action,
+            background,
+            Node {
+                width: Val::Px(BUTTON_SIZE.x * ui_scale),
+                height: Val::Px(BUTTON_SIZE.y * ui_scale),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
-            TextColor(Color::WHITE),
-        ));
-    });
+            Interaction::default(),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(text),
+                TextFont {
+                    font_size: {
+                        if let FontSize::Px(size) = FONT_SIZE {
+                            FontSize::Px(size * ui_scale)
+                        } else {
+                            FONT_SIZE
+                        }
+                    },
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+        });
 }
 
 pub(crate) struct VisualState {
@@ -75,15 +76,30 @@ pub(crate) fn click_visual(
     match *interaction {
         Interaction::Pressed => {
             was_pressed.insert(entity);
-            VisualState { bg_color: PRESSED_BUTTON, tint: PRESSED_TINT, size: BUTTON_HOVERED_SIZE * ui_scale, released: false }
+            VisualState {
+                bg_color: PRESSED_BUTTON,
+                tint: PRESSED_TINT,
+                size: BUTTON_HOVERED_SIZE * ui_scale,
+                released: false,
+            }
         }
         Interaction::Hovered => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: HOVERED_BUTTON, tint: HOVERED_TINT, size: BUTTON_HOVERED_SIZE * ui_scale, released }
+            VisualState {
+                bg_color: HOVERED_BUTTON,
+                tint: HOVERED_TINT,
+                size: BUTTON_HOVERED_SIZE * ui_scale,
+                released,
+            }
         }
         Interaction::None => {
             let released = was_pressed.remove(&entity);
-            VisualState { bg_color: NORMAL_BUTTON, tint: NORMAL_TINT, size: BUTTON_SIZE * ui_scale, released }
+            VisualState {
+                bg_color: NORMAL_BUTTON,
+                tint: NORMAL_TINT,
+                size: BUTTON_SIZE * ui_scale,
+                released,
+            }
         }
     }
 }
@@ -95,8 +111,12 @@ pub(crate) fn apply_visual(
     img: Option<Mut<'_, ImageNode>>,
     node: Option<Mut<'_, Node>>,
 ) -> bool {
-    if let Some(mut bg) = bg { bg.0 = visual.bg_color; }
-    if let Some(mut img) = img { img.color = visual.tint; }
+    if let Some(mut bg) = bg {
+        bg.0 = visual.bg_color;
+    }
+    if let Some(mut img) = img {
+        img.color = visual.tint;
+    }
     if let Some(mut node) = node {
         node.width = Val::Px(visual.size.x);
         node.height = Val::Px(visual.size.y);

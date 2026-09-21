@@ -1,8 +1,8 @@
-use bevy::prelude::*;
-use crate::acts::{CurrentAct};
-use crate::scenes::game::room_def;
-use crate::scenes::hotspot::{spawn_room, Room};
+use crate::acts::CurrentAct;
+use crate::scenes::game::rooms::room_def;
+use crate::scenes::hotspot::{Room, spawn_room};
 use crate::state::GameState;
+use bevy::prelude::*;
 
 pub const FADE_DURATION: f32 = 0.35;
 
@@ -86,9 +86,9 @@ pub fn room_fade_system(
                         Vec3::ZERO,
                         def.interactive,
                     );
-                    fade.auto_timer = def.auto_next.map(|(next, secs)| {
-                        (next, Timer::from_seconds(secs, TimerMode::Once))
-                    });
+                    fade.auto_timer = def
+                        .auto_next
+                        .map(|(next, secs)| (next, Timer::from_seconds(secs, TimerMode::Once)));
                     for sound in &active_sounds {
                         commands.entity(sound).despawn();
                     }
