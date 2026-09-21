@@ -24,27 +24,11 @@ impl Default for UiScale {
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins((scenes::menu::MenuPlugin, scenes::game::GamePlugin))
         .init_state::<GameState>()
         .init_resource::<UiScale>()
-        .init_resource::<acts::Inventory>()
-        .init_resource::<acts::CurrentAct>()
-        .init_resource::<scenes::fade::RoomFade>()
         .add_systems(Startup, spawn_camera)
         .add_systems(PreUpdate, update_ui_scale)
-        .add_systems(OnEnter(GameState::Menu), scenes::menu::ui::spawn_menu_ui)
-        .add_systems(OnEnter(GameState::Game), scenes::game::ui::spawn_game_ui)
-        .add_systems(Update, scenes::menu::systems::menu_button_system)
-        .add_systems(
-            Update,
-            (
-                scenes::game::systems::game_button_system,
-                scenes::game::systems::carousel_system,
-                scenes::game::systems::game_hotspot_system,
-                scenes::fade::room_fade_system,
-                scenes::game::ui::update_room_label,
-            )
-                .run_if(in_state(GameState::Game)),
-        )
         .add_systems(Update, scenes::loading::loading_system)
         .run();
 }

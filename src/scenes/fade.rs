@@ -1,6 +1,6 @@
 use crate::acts::CurrentAct;
-use crate::scenes::game::rooms::room_def;
-use crate::scenes::hotspot::{Room, spawn_room};
+use crate::scenes::game::rooms::data::room_def;
+use crate::scenes::game::rooms::{components::Room, spawn::spawn_room};
 use crate::state::GameState;
 use bevy::prelude::*;
 

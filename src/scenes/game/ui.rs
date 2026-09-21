@@ -4,8 +4,11 @@ use crate::UiScale;
 use crate::acts::{CurrentAct, default_act};
 use crate::buttons;
 use crate::scenes::fade::{RoomFade, spawn_fade_overlay};
-use crate::scenes::game::rooms::room_def;
-use crate::scenes::hotspot::{Room, RoomTitle, spawn_room};
+use crate::scenes::game::rooms::data::room_def;
+use crate::scenes::game::rooms::{
+    components::{Room, RoomTitle},
+    spawn::spawn_room,
+};
 use crate::scenes::loading::spawn_loading_overlay;
 use crate::state::GameState;
 

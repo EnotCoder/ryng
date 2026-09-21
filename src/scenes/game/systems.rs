@@ -5,11 +5,11 @@ use crate::UiScale;
 use crate::acts::{Inventory, Item};
 use crate::buttons;
 use crate::scenes::fade::{FADE_DURATION, FadePhase, RoomFade};
-use crate::scenes::game::ui::{CarouselArrow, CarouselDir, GameAction};
-use crate::scenes::hotspot::{
+use crate::scenes::game::rooms::components::{
     Hotspot, HotspotAction, Room, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
-    spawn_room_content,
 };
+use crate::scenes::game::rooms::spawn::spawn_room_content;
+use crate::scenes::game::ui::{CarouselArrow, CarouselDir, GameAction};
 use crate::state::GameState;
 
 pub fn game_hotspot_system(

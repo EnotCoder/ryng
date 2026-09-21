@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::acts::{ActId, Item};
-use crate::scenes::hotspot::{HotspotAction, HotspotDef, RoomVariant};
+use crate::scenes::game::rooms::components::{HotspotAction, HotspotDef, RoomVariant};
 use crate::scenes::sound::TransitionSound;
 
 pub(crate) struct RoomDef {
