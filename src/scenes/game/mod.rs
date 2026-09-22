@@ -4,6 +4,7 @@ use crate::acts::{CurrentAct, Inventory};
 use crate::scenes::fade::{RoomFade, room_fade_system};
 use crate::state::GameState;
 
+mod inventory;
 pub mod rooms;
 mod systems;
 mod ui;
@@ -15,6 +16,7 @@ impl Plugin for GamePlugin {
         app.init_resource::<RoomFade>()
             .init_resource::<Inventory>()
             .init_resource::<CurrentAct>()
+            .add_plugins(inventory::InventoryUiPlugin)
             .add_systems(OnEnter(GameState::Game), ui::spawn_game_ui)
             .add_systems(
                 Update,

@@ -5,6 +5,7 @@ use crate::UiScale;
 use crate::acts::{Inventory, Item};
 use crate::buttons;
 use crate::scenes::fade::{FADE_DURATION, FadePhase, RoomFade};
+use crate::scenes::game::inventory::ActiveInvSlot;
 use crate::scenes::game::rooms::components::{
     Hotspot, HotspotAction, Room, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
 };
@@ -15,7 +16,8 @@ use crate::state::GameState;
 pub fn game_hotspot_system(
     mut clicks: MessageReader<Pointer<Click>>,
     hotspots: Query<(&HotspotAction, Option<&Item>), With<Hotspot>>,
-    inventory: Res<Inventory>,
+    mut inventory: ResMut<Inventory>,
+    active_slot: Res<ActiveInvSlot>,
     mut fade: ResMut<RoomFade>,
 ) {
     let mut next_room = None;
@@ -24,7 +26,15 @@ pub fn game_hotspot_system(
             continue;
         };
         let allowed = match gate {
-            Some(item) => inventory.0.contains(item),
+            Some(item) => {
+                let selected = inventory.0.get(active_slot.0).copied();
+                if selected == Some(*item) {
+                    inventory.0.remove(active_slot.0);
+                    true
+                } else {
+                    false
+                }
+            }
             None => true,
         };
         if allowed {
