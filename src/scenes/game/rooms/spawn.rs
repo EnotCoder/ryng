@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
 use crate::scenes::game::rooms::components::{
-    Hotspot, Room, RoomPart, RoomStory, RoomTitle, RoomVariant, RoomVariantIndex, RoomVariants,
+    Hotspot, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle, RoomVariant, RoomVariantIndex,
+    RoomVariants,
 };
 use crate::state::GameState;
 
@@ -58,6 +59,7 @@ pub fn spawn_room_content(
         let side = def.size.x.min(def.size.y) / 20.0;
         parent.spawn((
             RoomPart,
+            HotspotIcon,
             Sprite {
                 image: asset_server.load("tex/ui/cheak_room.png"),
                 custom_size: Some(Vec2::splat(side)),

@@ -11,6 +11,9 @@ pub enum HotspotAction {
 pub struct Hotspot;
 
 #[derive(Component)]
+pub struct HotspotIcon;
+
+#[derive(Component)]
 pub struct Room;
 
 #[derive(Component)]
