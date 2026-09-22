@@ -71,6 +71,8 @@ pub fn spawn_inventory_ui(
                         Node {
                             width: Val::Px(SLOT_SIZE * s),
                             height: Val::Px(SLOT_SIZE * s),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
                             ..default()
                         },
                         Interaction::default(),
