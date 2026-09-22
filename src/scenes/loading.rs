@@ -8,7 +8,7 @@ pub struct LoadingOverlay {
     fade: Option<Timer>,
 }
 
-pub const SPLASH_SECONDS: f32 = 5.0;
+pub const SPLASH_SECONDS: f32 = 1.0;
 
 #[derive(Resource)]
 pub struct SplashTimer(Timer);
