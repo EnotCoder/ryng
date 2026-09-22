@@ -55,5 +55,16 @@ pub fn spawn_room_content(
         if let Some(gate) = def.gate {
             child.insert(gate);
         }
+        let side = def.size.x.min(def.size.y) / 20.0;
+        parent.spawn((
+            RoomPart,
+            Sprite {
+                image: asset_server.load("tex/ui/cheak_room.png"),
+                custom_size: Some(Vec2::splat(side)),
+                ..default()
+            },
+            Transform::from_xyz(def.pos.x, def.pos.y, 1.0),
+            Pickable::IGNORE,
+        ));
     }
 }
