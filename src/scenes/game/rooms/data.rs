@@ -26,13 +26,19 @@ fn room_variant(
     }
 }
 
-fn hotspot(action: HotspotAction, gate: Option<Item>) -> HotspotDef {
+fn go_hotspot(target: &'static str, pos: Vec2) -> HotspotDef {
     HotspotDef {
-        action,
-        pos: Vec2::new(0.0, 0.0),
+        action: HotspotAction::GoToRoom(target),
+        pos,
         size: Vec2::new(200.0, 300.0),
-        gate,
+        gate: None,
     }
+}
+
+fn gated_hotspot(target: &'static str, pos: Vec2, gate: Item) -> HotspotDef {
+    let mut hotspot = go_hotspot(target, pos);
+    hotspot.gate = Some(gate);
+    hotspot
 }
 
 fn simple_room(
@@ -76,7 +82,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Street in front of home",
                 "You are tired after work and going home.\nNow you are approaching the entrance.",
                 TransitionSound::NextRoom,
-                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+                vec![go_hotspot(next, Vec2::new(-190.0, 100.0))],
             )
         }
         "tex/rooms/floor_1/street_to_home_2.png" => {
@@ -86,7 +92,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Street in front of home",
                 "Enter the building by clicking on the brown door.",
                 TransitionSound::NextRoom,
-                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
             )
         }
         "tex/rooms/floor_1/room_concierge.png" => {
@@ -96,7 +102,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Concierge",
                 "Go through the concierge room,\nshowing your pass from the inventory.",
                 TransitionSound::NextRoomWithOpenDoor,
-                vec![hotspot(HotspotAction::GoToRoom(next), Some(Item::Pass))],
+                vec![gated_hotspot(next, Vec2::new(0.0, 0.0), Item::Pass)],
             )
         }
         "tex/rooms/floor_1/room_with_elevator_floor_1.png"
@@ -109,9 +115,9 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                     "tex/rooms/floor_1/room_with_elevator_floor_1.png",
                     "Hall - 1st floor",
                     "Choose: take the elevator or\nwalk up the stairs.",
-                    vec![hotspot(
-                        HotspotAction::GoToRoom("tex/rooms/elevator_Inside.png"),
-                        None,
+                    vec![go_hotspot(
+                        "tex/rooms/elevator_Inside.png",
+                        Vec2::new(0.0, 0.0),
                     )],
                 ),
                 room_variant(
@@ -149,7 +155,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Basement Entrance",
                 "",
                 TransitionSound::NextRoom,
-                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
             )
         }
         "tex/rooms/basement/basement_stairs.png" => {
@@ -159,7 +165,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Basement Corridor",
                 "",
                 TransitionSound::NextRoom,
-                vec![hotspot(HotspotAction::GoToRoom(next), None)],
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
             )
         }
         "tex/rooms/basement/basement_stairs_center_room.png" => RoomDef {
