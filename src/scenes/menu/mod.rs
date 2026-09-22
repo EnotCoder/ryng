@@ -5,6 +5,8 @@ use crate::state::GameState;
 mod systems;
 mod ui;
 
+pub use ui::MenuAction;
+
 pub struct MenuPlugin;
 
 impl Plugin for MenuPlugin {

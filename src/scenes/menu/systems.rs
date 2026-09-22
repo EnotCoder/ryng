@@ -41,6 +41,6 @@ fn fire_menu(
         MenuAction::Quit => {
             exit.write(AppExit::Success);
         }
-        MenuAction::Settings => println!("Settings"),
+        MenuAction::Settings => {}
     }
 }

@@ -29,6 +29,7 @@ pub fn main() {
             scenes::loading::LoadingPlugin,
             scenes::intro::IntroPlugin,
             scenes::menu::MenuPlugin,
+            scenes::settings::SettingsPlugin,
             scenes::game::GamePlugin,
         ))
         .init_state::<GameState>()
