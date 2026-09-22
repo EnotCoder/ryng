@@ -26,6 +26,7 @@ impl Plugin for GamePlugin {
                     systems::game_hotspot_system,
                     room_fade_system,
                     ui::update_room_label,
+                    systems::idle_breathe_system,
                     crate::scenes::sound::background_music_system,
                 )
                     .run_if(in_state(GameState::Game)),

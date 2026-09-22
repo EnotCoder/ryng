@@ -13,6 +13,17 @@ use crate::scenes::game::rooms::spawn::spawn_room_content;
 use crate::scenes::game::ui::{CarouselArrow, CarouselDir, GameAction};
 use crate::state::GameState;
 
+const BREATH_AMPLITUDE: f32 = 4.0;
+const BREATH_SPEED: f32 = std::f32::consts::TAU / 3.2;
+
+pub fn idle_breathe_system(time: Res<Time>, mut rooms: Query<&mut Transform, With<Room>>) {
+    let t = time.elapsed_secs() * BREATH_SPEED;
+    let offset = -t.sin() * BREATH_AMPLITUDE;
+    for mut room in &mut rooms {
+        room.translation.y = offset;
+    }
+}
+
 pub fn game_hotspot_system(
     mut clicks: MessageReader<Pointer<Click>>,
     hotspots: Query<(&HotspotAction, Option<&Item>), With<Hotspot>>,
