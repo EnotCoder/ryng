@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::UiScale;
 use crate::buttons;
 use crate::scenes::settings::systems::{
-    ACCENT_ON, CheckMark, SettingsPanel, SettingsPanelAction, SettingsPanelOpen, Slider,
-    SliderFill, SliderThumb, VignetteCheckbox, VolumeLabel,
+    ACCENT_ON, SettingsPanel, SettingsPanelAction, SettingsPanelOpen, Slider, SliderFill,
+    SliderThumb, VignetteCheckbox, VolumeLabel,
 };
 use crate::state::GameState;
 
@@ -69,6 +69,10 @@ fn volume_row(parent: &mut ChildSpawnerCommands<'_>, s: f32) {
             });
             row.spawn((
                 VolumeLabel,
+                Node {
+                    width: Val::Px(64.0 * s),
+                    ..default()
+                },
                 Text::new("100%"),
                 TextFont {
                     font_size: FontSize::Px(20.0 * s),
@@ -104,22 +108,9 @@ fn vignette_row(parent: &mut ChildSpawnerCommands<'_>, s: f32) {
                 Node {
                     width: Val::Px(CHECKBOX_SIZE * s),
                     height: Val::Px(CHECKBOX_SIZE * s),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
                     ..default()
                 },
-            ))
-            .with_children(|check| {
-                check.spawn((
-                    CheckMark,
-                    Text::new("✓"),
-                    TextFont {
-                        font_size: FontSize::Px(16.0 * s),
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.1, 0.1, 0.1)),
-                ));
-            });
+            ));
         });
 }
 

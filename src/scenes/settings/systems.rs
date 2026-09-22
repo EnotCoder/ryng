@@ -52,9 +52,6 @@ pub struct VolumeLabel;
 pub struct VignetteCheckbox;
 
 #[derive(Component)]
-pub struct CheckMark;
-
-#[derive(Component)]
 pub enum SettingsPanelAction {
     Close,
 }
@@ -177,7 +174,6 @@ pub fn slider_update_system(
 pub fn checkbox_update_system(
     vignette: Res<VignetteSettings>,
     mut boxes: Query<&mut BackgroundColor, With<VignetteCheckbox>>,
-    mut checks: Query<&mut Visibility, With<CheckMark>>,
 ) {
     if !vignette.is_changed() {
         return;
@@ -187,13 +183,6 @@ pub fn checkbox_update_system(
             ACCENT_ON
         } else {
             ACCENT_OFF
-        };
-    }
-    for mut check in &mut checks {
-        *check = if vignette.enabled {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
         };
     }
 }
