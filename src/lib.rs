@@ -25,7 +25,12 @@ impl Default for UiScale {
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins((scenes::menu::MenuPlugin, scenes::game::GamePlugin))
+        .add_plugins((
+            scenes::loading::LoadingPlugin,
+            scenes::intro::IntroPlugin,
+            scenes::menu::MenuPlugin,
+            scenes::game::GamePlugin,
+        ))
         .init_state::<GameState>()
         .init_resource::<UiScale>()
         .add_systems(Startup, spawn_camera)

@@ -8,6 +8,51 @@ pub struct LoadingOverlay {
     fade: Option<Timer>,
 }
 
+pub const SPLASH_SECONDS: f32 = 5.0;
+
+#[derive(Resource)]
+pub struct SplashTimer(Timer);
+
+impl Default for SplashTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(SPLASH_SECONDS, TimerMode::Once))
+    }
+}
+
+pub struct LoadingPlugin;
+
+impl Plugin for LoadingPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<SplashTimer>()
+            .add_systems(OnEnter(GameState::Loading), spawn_splash_ui)
+            .add_systems(Update, splash_system.run_if(in_state(GameState::Loading)));
+    }
+}
+
+pub fn spawn_splash_ui(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        BackgroundColor(Color::BLACK),
+        Pickable::IGNORE,
+        DespawnOnExit(GameState::Loading),
+    ));
+}
+
+pub fn splash_system(
+    time: Res<Time>,
+    mut timer: ResMut<SplashTimer>,
+    mut next: ResMut<NextState<GameState>>,
+) {
+    timer.0.tick(time.delta());
+    if timer.0.is_finished() {
+        next.set(GameState::Intro);
+    }
+}
+
 pub fn spawn_loading_overlay(
     commands: &mut Commands,
     pending: Vec<Handle<Image>>,
