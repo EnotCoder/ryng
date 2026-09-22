@@ -92,7 +92,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Street in front of home",
                 "Enter the building by clicking on the brown door.",
                 TransitionSound::NextRoom,
-                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+                vec![go_hotspot(next, Vec2::new(-10.0, 0.0))],
             )
         }
         "tex/rooms/floor_1/room_concierge.png" => {
