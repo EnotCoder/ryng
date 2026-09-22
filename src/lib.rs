@@ -1,4 +1,5 @@
 use bevy::camera::{OrthographicProjection, Projection, ScalingMode};
+use bevy::post_process::effect_stack::Vignette;
 use bevy::prelude::*;
 
 pub mod acts;
@@ -36,6 +37,14 @@ pub fn main() {
 fn spawn_camera(mut commands: Commands) {
     commands
         .spawn(Camera2d)
+        .insert(Vignette {
+            intensity: 0.9,
+            radius: 0.6,
+            smoothness: 4.0,
+            roundness: 1.2,
+            edge_compensation: 1.0,
+            ..default()
+        })
         .insert(Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
                 viewport_height: DESIGN_HEIGHT,
