@@ -149,7 +149,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             next_act: Some(ActId::ActTwo),
         },
         "tex/rooms/basement/basement_stairs.png" => {
-            let next = "tex/rooms/floor_2/room_1.png";
+            let next = "tex/rooms/stairs/stairs_1.png";
             simple_room(
                 "tex/rooms/basement/basement_stairs.png",
                 "Basement Corridor",
@@ -186,6 +186,26 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "",
                 TransitionSound::NextRoom,
                 vec![go_hotspot(back, Vec2::new(0.0, 0.0))],
+            )
+        }
+        "tex/rooms/stairs/stairs_1.png" => {
+            let next = "tex/rooms/stairs/stairs_2.png";
+            simple_room(
+                "tex/rooms/stairs/stairs_1.png",
+                "Stairs",
+                "",
+                TransitionSound::NextRoom,
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+            )
+        }
+        "tex/rooms/stairs/stairs_2.png" => {
+            let next = "tex/rooms/floor_2/room_1.png";
+            simple_room(
+                "tex/rooms/stairs/stairs_2.png",
+                "Stairs",
+                "",
+                TransitionSound::NextRoom,
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
             )
         }
         "tex/rooms/floor_2/room_1.png" => {
