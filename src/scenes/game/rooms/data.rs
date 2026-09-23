@@ -139,7 +139,7 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
         "tex/rooms/basement/basement_with_elevator.png" => RoomDef {
             sound: TransitionSound::None,
             interactive: false,
-            auto_next: Some(("tex/rooms/basement/basement_stairs_left_room.png", 2.0)),
+            auto_next: Some(("tex/rooms/basement/basement_stairs.png", 2.0)),
             variants: vec![room_variant(
                 "tex/rooms/basement/basement_with_elevator.png",
                 "Basement - elevator hall",
@@ -148,18 +148,8 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             )],
             next_act: Some(ActId::ActTwo),
         },
-        "tex/rooms/basement/basement_stairs_left_room.png" => {
-            let next = "tex/rooms/basement/basement_stairs.png";
-            simple_room(
-                "tex/rooms/basement/basement_stairs_left_room.png",
-                "Basement Entrance",
-                "",
-                TransitionSound::NextRoom,
-                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
-            )
-        }
         "tex/rooms/basement/basement_stairs.png" => {
-            let next = "tex/rooms/basement/basement_stairs_center_room.png";
+            let next = "tex/rooms/floor_2/room_1.png";
             simple_room(
                 "tex/rooms/basement/basement_stairs.png",
                 "Basement Corridor",
@@ -168,18 +158,21 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
             )
         }
-        "tex/rooms/basement/basement_stairs_center_room.png" => RoomDef {
-            sound: TransitionSound::None,
-            interactive: false,
-            auto_next: Some(("tex/rooms/my_floor/room_with_elevator_floor_my.png", 2.0)),
-            variants: vec![room_variant(
-                "tex/rooms/basement/basement_stairs_center_room.png",
-                "Basement Deep",
-                "",
-                Vec::new(),
-            )],
-            next_act: Some(ActId::ActThree),
-        },
+        "tex/rooms/floor_2/room_1.png" => {
+            let next = "tex/rooms/my_floor/room_with_elevator_floor_my.png";
+            RoomDef {
+                sound: TransitionSound::NextRoom,
+                interactive: true,
+                auto_next: None,
+                variants: vec![room_variant(
+                    "tex/rooms/floor_2/room_1.png",
+                    "Floor 2",
+                    "",
+                    vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+                )],
+                next_act: Some(ActId::ActThree),
+            }
+        }
         "tex/rooms/my_floor/room_with_elevator_floor_my.png" => story_room(
             "tex/rooms/my_floor/room_with_elevator_floor_my.png",
             "My Floor Lobby",

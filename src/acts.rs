@@ -37,12 +37,12 @@ pub fn get_act(id: ActId) -> Act {
         ActId::ActTwo => Act {
             id: ActId::ActTwo,
             name: "The Descent",
-            start_room: "tex/rooms/basement/basement_stairs_left_room.png",
+            start_room: "tex/rooms/basement/basement_with_elevator.png",
         },
         ActId::ActThree => Act {
             id: ActId::ActThree,
             name: "The Escape",
-            start_room: "tex/rooms/my_floor/room_with_elevator_floor_my.png",
+            start_room: "tex/rooms/floor_2/room_1.png",
         },
     }
 }
