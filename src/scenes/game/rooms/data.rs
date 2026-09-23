@@ -155,7 +155,37 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 "Basement Corridor",
                 "",
                 TransitionSound::NextRoom,
-                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+                vec![
+                    go_hotspot(next, Vec2::new(250.0, 0.0)),
+                    go_hotspot(
+                        "tex/rooms/basement/basement_stairs_center_room.png",
+                        Vec2::new(0.0, 0.0),
+                    ),
+                    go_hotspot(
+                        "tex/rooms/basement/basement_stairs_left_room.png",
+                        Vec2::new(-320.0, 0.0),
+                    ),
+                ],
+            )
+        }
+        "tex/rooms/basement/basement_stairs_center_room.png" => {
+            let back = "tex/rooms/basement/basement_stairs.png";
+            simple_room(
+                "tex/rooms/basement/basement_stairs_center_room.png",
+                "Basement Deep",
+                "",
+                TransitionSound::NextRoom,
+                vec![go_hotspot(back, Vec2::new(0.0, 0.0))],
+            )
+        }
+        "tex/rooms/basement/basement_stairs_left_room.png" => {
+            let back = "tex/rooms/basement/basement_stairs.png";
+            simple_room(
+                "tex/rooms/basement/basement_stairs_left_room.png",
+                "Basement Entrance",
+                "",
+                TransitionSound::NextRoom,
+                vec![go_hotspot(back, Vec2::new(0.0, 0.0))],
             )
         }
         "tex/rooms/floor_2/room_1.png" => {
