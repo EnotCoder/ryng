@@ -5,6 +5,8 @@ use crate::state::GameState;
 mod systems;
 mod ui;
 
+pub use systems::SettingsPanelOpen;
+
 pub struct SettingsPlugin;
 
 impl Plugin for SettingsPlugin {

@@ -7,6 +7,7 @@ use crate::scenes::settings::systems::{
     SliderThumb, VignetteCheckbox, VolumeLabel,
 };
 use crate::state::GameState;
+use bevy::ui::FocusPolicy;
 
 const TRACK_WIDTH: f32 = 220.0;
 const TRACK_HEIGHT: f32 = 16.0;
@@ -134,6 +135,11 @@ pub fn spawn_settings_panel(
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
             Visibility::Hidden,
             GlobalZIndex(1),
+            FocusPolicy::Block,
+            Pickable {
+                should_block_lower: true,
+                is_hoverable: false,
+            },
             SettingsPanel,
             DespawnOnExit(GameState::Menu),
         ))
