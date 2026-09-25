@@ -55,6 +55,8 @@ const CITY_ROOMS: [&str; 2] = [
 fn background_music_path(room_path: &str) -> &'static str {
     if CITY_ROOMS.contains(&room_path) {
         "sounds/city.mp3"
+    } else if room_path.starts_with("tex/rooms/basement/") {
+        "sounds/basement.mp3"
     } else {
         "sounds/null_room.mp3"
     }
