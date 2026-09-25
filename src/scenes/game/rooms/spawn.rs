@@ -21,6 +21,9 @@ pub fn spawn_room(
         RoomVariants(variants),
         RoomVariantIndex(0),
         Transform::from_translation(pos),
+        // Children (sprites) have `InheritedVisibility`; the parent needs it too,
+        // otherwise Bevy logs B0004 hierarchy warnings on every room spawn.
+        Visibility::default(),
         DespawnOnExit(GameState::Game),
     ));
     root.with_children(|parent| spawn_room_content(parent, asset_server, &first, interactive));
