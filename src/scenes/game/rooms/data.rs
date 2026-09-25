@@ -123,8 +123,11 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                 room_variant(
                     "tex/rooms/floor_1/stairs_1_floor.png",
                     "1st floor - stairs",
-                    "Taking the stairs will start you from level 2.\n(The stairs are closed for now - wait for the next acts)",
-                    Vec::new(),
+                    "The stairs are open. Climb up.",
+                    vec![go_hotspot(
+                        "tex/rooms/stairs/stairs_1.png",
+                        Vec2::new(250.0, 0.0),
+                    )],
                 ),
             ],
             next_act: None,
