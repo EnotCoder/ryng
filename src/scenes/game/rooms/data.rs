@@ -73,6 +73,18 @@ fn story_room(
     }
 }
 
+/// A plain room on floor 2 with a single hotspot back to `room_1`.
+fn floor_2_side_room(path: &'static str, title: &'static str) -> RoomDef {
+    let back = "tex/rooms/floor_2/room_1.png";
+    simple_room(
+        path,
+        title,
+        "",
+        TransitionSound::NextRoom,
+        vec![go_hotspot(back, Vec2::new(0.0, 0.0))],
+    )
+}
+
 pub(crate) fn room_def(path: &'static str) -> RoomDef {
     match path {
         "tex/rooms/floor_1/street_to_home_1.png" => {
@@ -212,7 +224,9 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             )
         }
         "tex/rooms/floor_2/room_1.png" => {
-            let next = "tex/rooms/my_floor/room_with_elevator_floor_my.png";
+            let center = "tex/rooms/floor_2/room_2.png";
+            let left = "tex/rooms/floor_2/ap_1.png";
+            let right = "tex/rooms/floor_2/ap_2.png";
             RoomDef {
                 sound: TransitionSound::NextRoom,
                 interactive: true,
@@ -221,11 +235,20 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                     "tex/rooms/floor_2/room_1.png",
                     "Floor 2",
                     "",
-                    vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+                    vec![
+                        go_hotspot(center, Vec2::new(0.0, 0.0)),
+                        go_hotspot(left, Vec2::new(-250.0, 0.0)),
+                        go_hotspot(right, Vec2::new(250.0, 0.0)),
+                    ],
                 )],
                 next_act: Some(ActId::ActThree),
             }
         }
+        "tex/rooms/floor_2/room_2.png" => {
+            floor_2_side_room("tex/rooms/floor_2/room_2.png", "Floor 2 - Corridor")
+        }
+        "tex/rooms/floor_2/ap_1.png" => floor_2_side_room("tex/rooms/floor_2/ap_1.png", "Apartment 1"),
+        "tex/rooms/floor_2/ap_2.png" => floor_2_side_room("tex/rooms/floor_2/ap_2.png", "Apartment 2"),
         "tex/rooms/my_floor/room_with_elevator_floor_my.png" => story_room(
             "tex/rooms/my_floor/room_with_elevator_floor_my.png",
             "My Floor Lobby",
