@@ -4,7 +4,7 @@ use crate::UiScale;
 use crate::acts::{Inventory, Item};
 use crate::state::GameState;
 
-pub const INVENTORY_SLOT_COUNT: usize = 3;
+pub const INVENTORY_SLOT_COUNT: usize = 4;
 pub const SLOT_SIZE: f32 = 128.0 / 1.5;
 pub const ICON_SIZE: f32 = SLOT_SIZE * 100.0 / 128.0;
 
@@ -27,11 +27,13 @@ pub struct InventoryTextures {
     pub active_slot: Handle<Image>,
     pub disabled_slot: Handle<Image>,
     pub icon_pass: Handle<Image>,
+    pub icon_main_key: Handle<Image>,
 }
 
 fn icon_handle(textures: &InventoryTextures, item: &Item) -> Handle<Image> {
     match item {
         Item::Pass => textures.icon_pass.clone(),
+        Item::MainKey => textures.icon_main_key.clone(),
     }
 }
 
@@ -58,7 +60,7 @@ pub fn spawn_inventory_ui(
         ))
         .with_children(|parent| {
             for index in 0..INVENTORY_SLOT_COUNT {
-                let item = inventory.0.get(index).copied();
+                let item = inventory.0.get(index).copied().flatten();
                 let slot_bg = if index == active.0 {
                     textures.active_slot.clone()
                 } else {
@@ -131,7 +133,7 @@ pub fn update_inventory_ui(
         };
     }
     for (mut icon, mut img, mut vis) in &mut params.p1() {
-        let item = inventory.0.get(icon.index).copied();
+        let item = inventory.0.get(icon.index).copied().flatten();
         icon.item = item;
         *vis = if item.is_some() {
             Visibility::Visible

@@ -46,9 +46,9 @@ pub fn game_hotspot_system(
         };
         let allowed = match gate {
             Some(item) => {
-                let selected = inventory.0.get(active_slot.0).copied();
+                let selected = inventory.0.get(active_slot.0).copied().flatten();
                 if selected == Some(*item) {
-                    inventory.0.remove(active_slot.0);
+                    inventory.0[active_slot.0] = None;
                     true
                 } else {
                     false

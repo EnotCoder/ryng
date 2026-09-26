@@ -3,14 +3,22 @@ use bevy::prelude::*;
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 pub enum Item {
     Pass,
+    MainKey,
 }
 
+/// One entry per inventory slot, `None` = empty slot.
 #[derive(Resource)]
-pub struct Inventory(pub Vec<Item>);
+pub struct Inventory(pub Vec<Option<Item>>);
 
 impl Default for Inventory {
     fn default() -> Self {
-        Self(vec![Item::Pass])
+        // Slot 1: concierge pass, slot 4: the apartment key (stays with you the whole game).
+        Self(vec![
+            Some(Item::Pass),
+            None,
+            None,
+            Some(Item::MainKey),
+        ])
     }
 }
 

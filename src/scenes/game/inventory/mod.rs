@@ -17,6 +17,7 @@ impl Plugin for InventoryUiPlugin {
                 active_slot: asset_server.load("tex/ui/inv_active_slot.png"),
                 disabled_slot: asset_server.load("tex/ui/inv_disable_slot.png"),
                 icon_pass: asset_server.load("tex/ui/icons_inv/kon_card.png"),
+                icon_main_key: asset_server.load("tex/ui/icons_inv/main_key.png"),
             }
         };
         app.insert_resource(textures)
