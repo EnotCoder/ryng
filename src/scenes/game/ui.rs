@@ -141,6 +141,7 @@ pub fn spawn_game_ui(
         asset_server.load("tex/rooms/floor_1/street_to_home_1.png"),
         asset_server.load("tex/rooms/floor_1/street_to_home_2.png"),
         asset_server.load("tex/rooms/floor_1/room_concierge.png"),
+        asset_server.load("tex/rooms/floor_1/room_concierge_dark.png"),
         asset_server.load("tex/rooms/floor_1/room_with_elevator_floor_1.png"),
         asset_server.load("tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png"),
         asset_server.load("tex/rooms/floor_1/stairs_1_floor.png"),

@@ -120,12 +120,13 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
                     vec![gated_hotspot(next, Vec2::new(0.0, 0.0), Item::Pass)],
                 )
             } else {
-                // The pass is already spent, the concierge just waves you through.
+                // The pass is already spent and nobody is on duty, the lights are off.
+                let dark = "tex/rooms/floor_1/room_concierge_dark.png";
                 let next = "tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png";
                 simple_room(
-                    "tex/rooms/floor_1/room_concierge.png",
+                    dark,
                     "Concierge",
-                    "The concierge waves you through\nwithout asking for anything.",
+                    "Nobody is at the desk.\nThe concierge waves you through.",
                     TransitionSound::NextRoomWithOpenDoor,
                     vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
                 )
