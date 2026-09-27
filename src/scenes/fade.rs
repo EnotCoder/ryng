@@ -73,7 +73,7 @@ pub fn room_fade_system(
                     if let Ok(old) = rooms.single() {
                         commands.entity(old).despawn();
                     }
-                    let def = room_def(path);
+                    let def = room_def(path, current_act.0);
 
                     if let Some(next_act_id) = def.next_act {
                         current_act.0 = next_act_id;

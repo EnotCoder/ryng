@@ -85,7 +85,9 @@ fn floor_2_side_room(path: &'static str, title: &'static str) -> RoomDef {
     )
 }
 
-pub(crate) fn room_def(path: &'static str) -> RoomDef {
+/// `act` is the act the player is currently in: the concierge asks for the pass and
+/// the elevator still works during act 1, after the basement loop it does not.
+pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
     match path {
         "tex/rooms/floor_1/street_to_home_1.png" => {
             let next = "tex/rooms/floor_1/street_to_home_2.png";
@@ -108,14 +110,26 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             )
         }
         "tex/rooms/floor_1/room_concierge.png" => {
-            let next = "tex/rooms/floor_1/room_with_elevator_floor_1.png";
-            simple_room(
-                "tex/rooms/floor_1/room_concierge.png",
-                "Concierge",
-                "Go through the concierge room,\nshowing your pass from the inventory.",
-                TransitionSound::NextRoomWithOpenDoor,
-                vec![gated_hotspot(next, Vec2::new(0.0, 0.0), Item::Pass)],
-            )
+            if act == ActId::ActOne {
+                let next = "tex/rooms/floor_1/room_with_elevator_floor_1.png";
+                simple_room(
+                    "tex/rooms/floor_1/room_concierge.png",
+                    "Concierge",
+                    "Go through the concierge room,\nshowing your pass from the inventory.",
+                    TransitionSound::NextRoomWithOpenDoor,
+                    vec![gated_hotspot(next, Vec2::new(0.0, 0.0), Item::Pass)],
+                )
+            } else {
+                // The pass is already spent, the concierge just waves you through.
+                let next = "tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png";
+                simple_room(
+                    "tex/rooms/floor_1/room_concierge.png",
+                    "Concierge",
+                    "The concierge waves you through\nwithout asking for anything.",
+                    TransitionSound::NextRoomWithOpenDoor,
+                    vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+                )
+            }
         }
         "tex/rooms/floor_1/room_with_elevator_floor_1.png"
         | "tex/rooms/floor_1/stairs_1_floor.png" => RoomDef {
@@ -131,6 +145,29 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
                         "tex/rooms/elevator_Inside.png",
                         Vec2::new(0.0, 0.0),
                     )],
+                ),
+                room_variant(
+                    "tex/rooms/floor_1/stairs_1_floor.png",
+                    "1st floor - stairs",
+                    "The stairs are open. Climb up.",
+                    vec![go_hotspot(
+                        "tex/rooms/stairs/stairs_1.png",
+                        Vec2::new(250.0, 0.0),
+                    )],
+                ),
+            ],
+            next_act: None,
+        },
+        "tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png" => RoomDef {
+            sound: TransitionSound::NextRoom,
+            interactive: true,
+            auto_next: None,
+            variants: vec![
+                room_variant(
+                    "tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png",
+                    "Hall - 1st floor",
+                    "The elevator is out of order.\nThe stairs are the only way up.",
+                    Vec::new(),
                 ),
                 room_variant(
                     "tex/rooms/floor_1/stairs_1_floor.png",
@@ -194,13 +231,33 @@ pub(crate) fn room_def(path: &'static str) -> RoomDef {
             )
         }
         "tex/rooms/basement/basement_stairs_left_room.png" => {
-            let back = "tex/rooms/basement/basement_stairs.png";
+            let next = "tex/rooms/basement/stairs_to_street_1.png";
             simple_room(
                 "tex/rooms/basement/basement_stairs_left_room.png",
-                "Basement Entrance",
-                "",
+                "Basement Exit",
+                "The door at the end of the corridor leads up.",
                 TransitionSound::NextRoom,
-                vec![go_hotspot(back, Vec2::new(0.0, 0.0))],
+                vec![go_hotspot(next, Vec2::new(0.0, 0.0))],
+            )
+        }
+        "tex/rooms/basement/stairs_to_street_1.png" => {
+            let next = "tex/rooms/basement/stairs_to_street_2.png";
+            simple_room(
+                "tex/rooms/basement/stairs_to_street_1.png",
+                "Stairs to the street",
+                "The door at the top is open.",
+                TransitionSound::NextRoomWithOpenDoor,
+                vec![go_hotspot(next, Vec2::new(0.0, 200.0))],
+            )
+        }
+        "tex/rooms/basement/stairs_to_street_2.png" => {
+            let next = "tex/rooms/floor_1/street_to_home_1.png";
+            simple_room(
+                "tex/rooms/basement/stairs_to_street_2.png",
+                "Courtyard",
+                "You are outside. Follow the path to the street.",
+                TransitionSound::NextRoom,
+                vec![go_hotspot(next, Vec2::new(0.0, -20.0))],
             )
         }
         "tex/rooms/stairs/stairs_1.png" => {

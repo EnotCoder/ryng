@@ -47,7 +47,8 @@ pub fn play_transition_sound(
 #[derive(Component)]
 pub struct PlayingBackgroundMusic(pub &'static str);
 
-const CITY_ROOMS: [&str; 2] = [
+const CITY_ROOMS: [&str; 3] = [
+    "tex/rooms/basement/stairs_to_street_2.png",
     "tex/rooms/floor_1/street_to_home_1.png",
     "tex/rooms/floor_1/street_to_home_2.png",
 ];
