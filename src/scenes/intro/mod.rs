@@ -3,6 +3,8 @@ use bevy::prelude::*;
 use crate::state::GameState;
 
 mod systems;
+#[cfg(test)]
+mod tests;
 mod ui;
 
 pub struct IntroPlugin;

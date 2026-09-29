@@ -24,7 +24,7 @@ impl Default for IntroTimer {
     }
 }
 
-fn intro_position(t: f32) -> (f32, f32) {
+pub(super) fn intro_position(t: f32) -> (f32, f32) {
     if t < FALL_START {
         (LOGO_START_Y, 0.0)
     } else if t < FALL_END {

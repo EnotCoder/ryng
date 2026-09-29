@@ -7,6 +7,8 @@ use crate::state::GameState;
 mod inventory;
 pub mod rooms;
 mod systems;
+#[cfg(test)]
+mod tests;
 mod ui;
 
 pub struct GamePlugin;

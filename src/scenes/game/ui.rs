@@ -23,7 +23,7 @@ pub struct RoomLabel;
 #[derive(Component, Clone, Copy)]
 pub struct CarouselArrow(pub CarouselDir);
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 pub enum CarouselDir {
     Prev,
     Next,

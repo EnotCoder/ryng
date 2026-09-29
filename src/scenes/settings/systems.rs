@@ -186,7 +186,7 @@ pub fn slider_input_system<R: SettingResource + SliderValue>(
 }
 
 /// A pointer hit arrives in normalized space, so `x` runs -0.5..0.5.
-fn fraction_from(position: Option<Vec3>) -> Option<f32> {
+pub(super) fn fraction_from(position: Option<Vec3>) -> Option<f32> {
     position.map(|pos| (pos.x + 0.5).clamp(0.0, 1.0))
 }
 

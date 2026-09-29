@@ -105,16 +105,9 @@ pub fn carousel_system(
     }
 
     buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |arrow| {
-        if variant_count < 2 {
+        let Some(new_index) = step(variant_index.0, variant_count, arrow.0) else {
             return;
-        }
-        let new_index = match arrow.0 {
-            CarouselDir::Prev => (variant_index.0 + variant_count - 1) % variant_count,
-            CarouselDir::Next => (variant_index.0 + 1) % variant_count,
         };
-        if new_index == variant_index.0 {
-            return;
-        }
         variant_index.0 = new_index;
         let variant = room_variants.0[new_index];
         title.0 = variant.title;
@@ -135,6 +128,21 @@ pub fn game_button_system(
     buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |action| {
         fire_game(action, &mut next_state);
     });
+}
+
+/// The variant one step away, wrapping at both ends.
+///
+/// `None` when there is nowhere to go: a single variant, or an empty room.
+/// Both are refused before the modulo, which would otherwise divide by zero.
+pub(super) fn step(index: usize, count: usize, dir: CarouselDir) -> Option<usize> {
+    if count < 2 {
+        return None;
+    }
+    let next = match dir {
+        CarouselDir::Prev => (index + count - 1) % count,
+        CarouselDir::Next => (index + 1) % count,
+    };
+    (next != index).then_some(next)
 }
 
 fn fire_game(action: &GameAction, next: &mut NextState<GameState>) {
