@@ -73,17 +73,7 @@ pub fn game_hotspot_system(
 }
 
 pub fn carousel_system(
-    mut clicks: Query<
-        (
-            Entity,
-            &Interaction,
-            &CarouselArrow,
-            Option<&mut BackgroundColor>,
-            Option<&mut ImageNode>,
-            Option<&mut Node>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
+    clicks: buttons::ButtonQuery<CarouselArrow>,
     mut was_pressed: Local<HashSet<Entity>>,
     ui_scale: Res<UiScale>,
     mut rooms: Query<
@@ -114,20 +104,16 @@ pub fn carousel_system(
         };
     }
 
-    for (entity, interaction, arrow, bg, img, node) in &mut clicks {
-        let visual = buttons::click_visual(interaction, &mut was_pressed, entity, ui_scale.0);
-        if !buttons::apply_visual(visual, bg, img, node) {
-            continue;
-        }
+    buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |arrow| {
         if variant_count < 2 {
-            continue;
+            return;
         }
         let new_index = match arrow.0 {
             CarouselDir::Prev => (variant_index.0 + variant_count - 1) % variant_count,
             CarouselDir::Next => (variant_index.0 + 1) % variant_count,
         };
         if new_index == variant_index.0 {
-            continue;
+            return;
         }
         variant_index.0 = new_index;
         let variant = room_variants.0[new_index];
@@ -137,31 +123,18 @@ pub fn carousel_system(
         commands.entity(room).with_children(|parent| {
             spawn_room_content(parent, &*asset_server, &variant, true);
         });
-    }
+    });
 }
 
 pub fn game_button_system(
-    mut query: Query<
-        (
-            Entity,
-            &Interaction,
-            &GameAction,
-            Option<&mut BackgroundColor>,
-            Option<&mut ImageNode>,
-            Option<&mut Node>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
+    clicks: buttons::ButtonQuery<GameAction>,
     mut was_pressed: Local<HashSet<Entity>>,
     mut next_state: ResMut<NextState<GameState>>,
     ui_scale: Res<UiScale>,
 ) {
-    for (entity, interaction, action, bg, img, node) in &mut query {
-        let visual = buttons::click_visual(interaction, &mut was_pressed, entity, ui_scale.0);
-        if buttons::apply_visual(visual, bg, img, node) {
-            fire_game(action, &mut next_state);
-        }
-    }
+    buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |action| {
+        fire_game(action, &mut next_state);
+    });
 }
 
 fn fire_game(action: &GameAction, next: &mut NextState<GameState>) {

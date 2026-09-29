@@ -138,13 +138,7 @@ pub fn spawn_game_ui(
     let start_room = default_act().start_room;
     let def = room_def(start_room, current_act.0);
     let handles: Vec<Handle<Image>> = all_paths().map(|path| asset_server.load(path)).collect();
-    spawn_room(
-        &mut commands,
-        &asset_server,
-        def.variants,
-        Vec3::ZERO,
-        def.interactive,
-    );
+    spawn_room(&mut commands, &asset_server, def, Vec3::ZERO);
 
     commands.spawn((
         Sprite::from_image(asset_server.load("tex/main_fon.png")),

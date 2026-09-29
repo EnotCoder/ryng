@@ -12,12 +12,26 @@ use state::GameState;
 pub const DEBUG_SHOW_HOTSPOTS: bool = false;
 pub const DESIGN_HEIGHT: f32 = 720.0;
 
-#[derive(Resource)]
+/// Design-space to screen scale. UI code multiplies its constants by this so a
+/// layout authored against `DESIGN_HEIGHT` keeps its proportions.
+#[derive(Resource, Clone, Copy)]
 pub struct UiScale(pub f32);
 
 impl Default for UiScale {
     fn default() -> Self {
         Self(1.0)
+    }
+}
+
+impl UiScale {
+    /// A design-space length as a `Val::Px`, already scaled.
+    pub fn px(&self, design: f32) -> Val {
+        Val::Px(design * self.0)
+    }
+
+    /// A design-space font size, already scaled.
+    pub fn font(&self, design: f32) -> FontSize {
+        FontSize::Px(design * self.0)
     }
 }
 

@@ -10,9 +10,11 @@
 //! - [`table`] - the rows themselves
 //! - `tests` - module tests, `#[cfg(test)]` only
 
+use bevy::prelude::*;
+
 use crate::acts::ActId;
 use crate::scenes::game::rooms::components::RoomVariant;
-use crate::scenes::sound::TransitionSound;
+use crate::scenes::sound::{Music, TransitionSound};
 
 mod builders;
 pub(crate) mod p;
@@ -23,9 +25,10 @@ mod tests;
 
 use table::{ROOMS, UNKNOWN};
 
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub(crate) struct RoomDef {
     pub sound: TransitionSound,
+    pub music: Music,
     pub interactive: bool,
     pub auto_next: Option<(&'static str, f32)>,
     pub variants: &'static [RoomVariant],

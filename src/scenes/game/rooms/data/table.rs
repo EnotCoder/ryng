@@ -3,14 +3,11 @@
 //! One row per room. `room_def` looks rows up by `variants[0].path`; that first
 //! variant path is the room's key.
 
-// The `room!` / `hop!` bodies name these types, and a macro body resolves its
-// names at the expansion site, so they have to be in scope here rather than in
-// `builders`.
 use bevy::prelude::*;
 
 use crate::acts::{ActId, Item};
 use crate::scenes::game::rooms::components::{HotspotAction, HotspotDef, RoomVariant};
-use crate::scenes::sound::TransitionSound;
+use crate::scenes::sound::{Music, TransitionSound};
 
 use super::builders::{HOTSPOT_SIZE, beat, carousel, chapter, gated, hop, room, shot, side_room};
 use super::{RoomDef, p};
@@ -30,6 +27,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Street in front of home",
         "You are tired after work and going home.\nNow you are approaching the entrance.",
         TransitionSound::NextRoom,
+        Music::City,
         &[hop!(p::F1_STREET_2, -190.0, 100.0)]
     ),
     room!(
@@ -37,6 +35,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Street in front of home",
         "Enter the building by clicking on the brown door.",
         TransitionSound::NextRoom,
+        Music::City,
         &[hop!(p::F1_CONCIERGE, -10.0, 0.0)]
     ),
     // Act 1 only: the pass is spent from the inventory to get through.
@@ -45,6 +44,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Concierge",
         "Go through the concierge room,\nshowing your pass from the inventory.",
         TransitionSound::NextRoomWithOpenDoor,
+        Music::Indoors,
         &[gated!(p::F1_HALL, 0.0, 0.0, Item::Pass)]
     ),
     // After the basement loop: nobody is on duty, the lights are off, the lift
@@ -54,10 +54,12 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Concierge",
         "Nobody is at the desk.\nThe concierge waves you through.",
         TransitionSound::NextRoomWithOpenDoor,
+        Music::Indoors,
         &[hop!(p::F1_HALL_DEAD, 0.0, 0.0)]
     ),
     carousel!(
         TransitionSound::NextRoom,
+        Music::Indoors,
         shot!(
             p::F1_HALL,
             "Hall - 1st floor",
@@ -68,6 +70,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
     ),
     carousel!(
         TransitionSound::NextRoom,
+        Music::Indoors,
         shot!(
             p::F1_HALL_DEAD,
             "Hall - 1st floor",
@@ -82,12 +85,14 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Inside elevator",
         "You are inside the elevator.\nAfter 15 seconds of riding, you fall and end up in the basement.",
         TransitionSound::ElevatorFall,
+        Music::Indoors,
         Some((p::B_HALL, 4.0))
     ),
     chapter!(
         p::B_HALL,
         "Basement - elevator hall",
         "You are in the basement.\nThis is where the first act comes to an end.",
+        Music::Basement,
         Some((p::B_CORRIDOR, 2.0)),
         ActId::ActTwo
     ),
@@ -96,6 +101,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Basement Corridor",
         "",
         TransitionSound::NextRoom,
+        Music::Basement,
         &[
             hop!(p::STAIRS_1, 250.0, 0.0),
             hop!(p::B_DEEP, 0.0, 0.0),
@@ -107,6 +113,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Basement Deep",
         "",
         TransitionSound::NextRoom,
+        Music::Basement,
         &[hop!(p::B_CORRIDOR, 0.0, 0.0)]
     ),
     room!(
@@ -114,6 +121,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Basement Exit",
         "The door at the end of the corridor leads up.",
         TransitionSound::NextRoom,
+        Music::Basement,
         &[hop!(p::B_STREET_1, 0.0, 0.0)]
     ),
     room!(
@@ -121,6 +129,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Stairs to the street",
         "The door at the top is open.",
         TransitionSound::NextRoomWithOpenDoor,
+        Music::Basement,
         &[hop!(p::B_STREET_2, 0.0, 200.0)]
     ),
     room!(
@@ -128,6 +137,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Courtyard",
         "You are outside. Follow the path to the street.",
         TransitionSound::NextRoom,
+        Music::City,
         &[hop!(p::F1_STREET_1, 0.0, -20.0)]
     ),
     // -- Stairs -------------------------------------------------------------
@@ -136,6 +146,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Stairs",
         "",
         TransitionSound::NextRoom,
+        Music::Indoors,
         &[hop!(p::STAIRS_2, 0.0, 0.0)]
     ),
     room!(
@@ -143,11 +154,13 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Stairs",
         "",
         TransitionSound::NextRoom,
+        Music::Indoors,
         &[hop!(p::F2_HALL, 0.0, 0.0)]
     ),
     // -- Floor 2 ------------------------------------------------------------
     RoomDef {
         sound: TransitionSound::NextRoom,
+        music: Music::Indoors,
         interactive: true,
         auto_next: None,
         variants: &[shot!(
@@ -171,6 +184,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "My Floor Lobby",
         "You reached your floor.",
         TransitionSound::NextRoom,
+        Music::Indoors,
         None
     ),
 ];
@@ -180,5 +194,6 @@ pub(super) static UNKNOWN: RoomDef = beat!(
     "Unknown room",
     "",
     TransitionSound::None,
+    Music::Indoors,
     None
 );

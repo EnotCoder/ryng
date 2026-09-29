@@ -13,12 +13,7 @@ pub struct Inventory(pub Vec<Option<Item>>);
 impl Default for Inventory {
     fn default() -> Self {
         // Slot 1: concierge pass, slot 4: the apartment key (stays with you the whole game).
-        Self(vec![
-            Some(Item::Pass),
-            None,
-            None,
-            Some(Item::MainKey),
-        ])
+        Self(vec![Some(Item::Pass), None, None, Some(Item::MainKey)])
     }
 }
 

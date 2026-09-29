@@ -12,6 +12,9 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Menu), ui::spawn_menu_ui)
-            .add_systems(Update, systems::menu_button_system);
+            .add_systems(
+                Update,
+                systems::menu_button_system.run_if(in_state(GameState::Menu)),
+            );
     }
 }

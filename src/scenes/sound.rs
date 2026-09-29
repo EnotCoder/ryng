@@ -1,7 +1,8 @@
 use bevy::audio::AudioSource;
 use bevy::prelude::*;
 
-use crate::scenes::game::rooms::components::{Room, RoomVariantIndex, RoomVariants};
+use crate::scenes::game::rooms::components::Room;
+use crate::scenes::game::rooms::data::RoomDef;
 use crate::state::GameState;
 
 #[derive(Clone, Copy)]
@@ -48,19 +49,23 @@ pub fn play_transition_sound(
 #[derive(Component)]
 pub struct PlayingBackgroundMusic(pub &'static str);
 
-const CITY_ROOMS: [&str; 3] = [
-    "tex/rooms/basement/stairs_to_street_2.png",
-    "tex/rooms/floor_1/street_to_home_1.png",
-    "tex/rooms/floor_1/street_to_home_2.png",
-];
+/// Which ambience loop a room plays. This used to be derived by string-matching
+/// the room's asset path, with the city rooms listed by hand; a new street room
+/// silently got the wrong track. The table now says which one it wants.
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum Music {
+    /// No ambience.
+    #[default]
+    Indoors,
+    City,
+    Basement,
+}
 
-fn background_music_path(room_path: &str) -> &'static str {
-    if CITY_ROOMS.contains(&room_path) {
-        "sounds/city.mp3"
-    } else if room_path.starts_with("tex/rooms/basement/") {
-        "sounds/basement.mp3"
-    } else {
-        "sounds/null_room.mp3"
+fn music_path(music: Music) -> &'static str {
+    match music {
+        Music::City => "sounds/city.mp3",
+        Music::Basement => "sounds/basement.mp3",
+        Music::Indoors => "sounds/null_room.mp3",
     }
 }
 
@@ -74,16 +79,16 @@ fn spawn_background_music(commands: &mut Commands, asset_server: &AssetServer, p
     ));
 }
 
-pub fn background_music_system(
-    rooms: Query<(&RoomVariants, &RoomVariantIndex), With<Room>>,
+pub(crate) fn background_music_system(
+    rooms: Query<&RoomDef, With<Room>>,
     music: Query<(Entity, &PlayingBackgroundMusic)>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    let Ok((variants, index)) = rooms.single() else {
+    let Ok(def) = rooms.single() else {
         return;
     };
-    let desired = background_music_path(variants.0[index.0].path);
+    let desired = music_path(def.music);
 
     if let Some((entity, current)) = music.iter().next() {
         if current.0 != desired {

@@ -4,21 +4,22 @@ use crate::scenes::game::rooms::components::{
     Hotspot, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle, RoomVariant, RoomVariantIndex,
     RoomVariants,
 };
+use crate::scenes::game::rooms::data::RoomDef;
 use crate::state::GameState;
 
-pub fn spawn_room(
+pub(crate) fn spawn_room(
     commands: &mut Commands,
     asset_server: &AssetServer,
-    variants: &'static [RoomVariant],
+    def: RoomDef,
     pos: Vec3,
-    interactive: bool,
 ) {
-    let first = variants[0];
+    let first = def.variants[0];
     let mut root = commands.spawn((
         Room,
+        def,
         RoomTitle(first.title),
         RoomStory(first.story),
-        RoomVariants(variants),
+        RoomVariants(def.variants),
         RoomVariantIndex(0),
         Transform::from_translation(pos),
         // Children (sprites) have `InheritedVisibility`; the parent needs it too,
@@ -26,7 +27,7 @@ pub fn spawn_room(
         Visibility::default(),
         DespawnOnExit(GameState::Game),
     ));
-    root.with_children(|parent| spawn_room_content(parent, asset_server, &first, interactive));
+    root.with_children(|parent| spawn_room_content(parent, asset_server, &first, def.interactive));
 }
 
 pub fn spawn_room_content(

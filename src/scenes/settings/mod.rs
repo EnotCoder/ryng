@@ -20,13 +20,20 @@ impl Plugin for SettingsPlugin {
                 (
                     systems::settings_button_system,
                     systems::close_button_system,
-                    systems::slider_input_system,
-                    systems::checkbox_click_system,
+                    // Generic over the resource they edit, so a new setting is a
+                    // type plus one line here rather than a pair of systems.
+                    systems::slider_input_system::<systems::SoundVolume>,
+                    systems::slider_update_system::<systems::SoundVolume>,
+                    systems::checkbox_click_system::<systems::VignetteSettings>,
+                    systems::checkbox_update_system::<systems::VignetteSettings>,
                     systems::panel_visibility_system,
-                    systems::slider_update_system,
-                    systems::checkbox_update_system,
                     systems::apply_settings_system,
-                ),
+                )
+                    // The panel is spawned on `OnEnter(Menu)` and despawns on exit,
+                    // so none of these have anything to touch in the other states.
+                    // `SoundVolume` and `VignetteSettings` are resources and outlive
+                    // the state, so a setting chosen here stays applied in game.
+                    .run_if(in_state(GameState::Menu)),
             );
     }
 }

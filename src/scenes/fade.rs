@@ -1,6 +1,7 @@
 use crate::acts::CurrentAct;
 use crate::scenes::game::rooms::data::room_def;
 use crate::scenes::game::rooms::{components::Room, spawn::spawn_room};
+use crate::scenes::sound::{PlayingTransitionSound, play_transition_sound};
 use crate::state::GameState;
 use bevy::prelude::*;
 
@@ -38,86 +39,91 @@ pub fn spawn_fade_overlay(commands: &mut Commands) {
     ));
 }
 
-pub fn room_fade_system(
+// The transition used to be one system doing four jobs. Each phase is now its
+// own system, and the three are chained in `game::mod`, so reading any one of
+// them tells you the whole of what happens during that phase.
+
+/// Ticks the timer that hands a non-interactive room over to the next one.
+pub fn auto_next_system(time: Res<Time>, mut fade: ResMut<RoomFade>) {
+    let FadePhase::Idle = fade.phase else {
+        return;
+    };
+    let Some((path, mut timer)) = fade.auto_timer.take() else {
+        return;
+    };
+    timer.tick(time.delta());
+    if timer.is_finished() {
+        fade.pending = Some(path);
+        fade.phase = FadePhase::FadeOut(fade_timer());
+    } else {
+        fade.auto_timer = Some((path, timer));
+    }
+}
+
+/// Darkens the screen, then swaps the room while it is fully black.
+pub fn fade_out_system(
     time: Res<Time>,
     mut fade: ResMut<RoomFade>,
     mut overlays: Query<&mut BackgroundColor, With<FadeOverlay>>,
     rooms: Query<Entity, With<Room>>,
-    active_sounds: Query<Entity, With<crate::scenes::sound::PlayingTransitionSound>>,
+    active_sounds: Query<Entity, With<PlayingTransitionSound>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut current_act: ResMut<CurrentAct>,
 ) {
-    let pending = fade.pending;
-    let mut finished = false;
-    match &mut fade.phase {
-        FadePhase::Idle => {
-            let auto = fade.auto_timer.take();
-            if let Some((path, mut timer)) = auto {
-                timer.tick(time.delta());
-                if timer.is_finished() {
-                    fade.pending = Some(path);
-                    fade.phase =
-                        FadePhase::FadeOut(Timer::from_seconds(FADE_DURATION, TimerMode::Once));
-                } else {
-                    fade.auto_timer = Some((path, timer));
-                }
-            }
-        }
-        FadePhase::FadeOut(timer) => {
-            timer.tick(time.delta());
-            set_overlay_alpha(&mut overlays, timer.fraction());
-            finished = timer.is_finished();
-            if finished {
-                if let Some(path) = pending {
-                    if let Ok(old) = rooms.single() {
-                        commands.entity(old).despawn();
-                    }
-                    let def = room_def(path, current_act.0);
-
-                    if let Some(next_act_id) = def.next_act {
-                        current_act.0 = next_act_id;
-                    }
-
-                    spawn_room(
-                        &mut commands,
-                        &asset_server,
-                        def.variants,
-                        Vec3::ZERO,
-                        def.interactive,
-                    );
-                    fade.auto_timer = def
-                        .auto_next
-                        .map(|(next, secs)| (next, Timer::from_seconds(secs, TimerMode::Once)));
-                    for sound in &active_sounds {
-                        commands.entity(sound).despawn();
-                    }
-                    crate::scenes::sound::play_transition_sound(
-                        &mut commands,
-                        &asset_server,
-                        &def.sound,
-                    );
-                }
-            }
-        }
-        FadePhase::FadeIn(timer) => {
-            timer.tick(time.delta());
-            set_overlay_alpha(&mut overlays, 1.0 - timer.fraction());
-            finished = timer.is_finished();
-        }
+    let FadePhase::FadeOut(timer) = &mut fade.phase else {
+        return;
+    };
+    timer.tick(time.delta());
+    set_overlay_alpha(&mut overlays, timer.fraction());
+    if !timer.is_finished() {
+        return;
     }
-    if finished {
-        match fade.phase {
-            FadePhase::FadeOut(_) => {
-                fade.phase = FadePhase::FadeIn(Timer::from_seconds(FADE_DURATION, TimerMode::Once));
-            }
-            FadePhase::FadeIn(_) => {
-                fade.phase = FadePhase::Idle;
-                fade.pending = None;
-            }
-            FadePhase::Idle => {}
-        }
+
+    let Some(path) = fade.pending else {
+        fade.phase = FadePhase::FadeIn(fade_timer());
+        return;
+    };
+    if let Ok(old) = rooms.single() {
+        commands.entity(old).despawn();
     }
+    let def = room_def(path, current_act.0);
+
+    if let Some(next_act_id) = def.next_act {
+        current_act.0 = next_act_id;
+    }
+
+    spawn_room(&mut commands, &asset_server, def, Vec3::ZERO);
+    fade.auto_timer = def
+        .auto_next
+        .map(|(next, secs)| (next, Timer::from_seconds(secs, TimerMode::Once)));
+    for sound in &active_sounds {
+        commands.entity(sound).despawn();
+    }
+    play_transition_sound(&mut commands, &asset_server, &def.sound);
+
+    fade.phase = FadePhase::FadeIn(fade_timer());
+}
+
+/// Brightens the screen back up and re-enables input.
+pub fn fade_in_system(
+    time: Res<Time>,
+    mut fade: ResMut<RoomFade>,
+    mut overlays: Query<&mut BackgroundColor, With<FadeOverlay>>,
+) {
+    let FadePhase::FadeIn(timer) = &mut fade.phase else {
+        return;
+    };
+    timer.tick(time.delta());
+    set_overlay_alpha(&mut overlays, 1.0 - timer.fraction());
+    if timer.is_finished() {
+        fade.phase = FadePhase::Idle;
+        fade.pending = None;
+    }
+}
+
+fn fade_timer() -> Timer {
+    Timer::from_seconds(FADE_DURATION, TimerMode::Once)
 }
 
 fn set_overlay_alpha(overlays: &mut Query<&mut BackgroundColor, With<FadeOverlay>>, alpha: f32) {

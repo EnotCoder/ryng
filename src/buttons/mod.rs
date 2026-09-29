@@ -15,9 +15,11 @@ pub const BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(155.0, 55.0);
 pub const BUTTON_GAP: f32 = 50.0;
 pub const FONT_SIZE: FontSize = FontSize::Px(20.0);
 
+mod click;
 mod plain;
 mod textured;
 
+pub(crate) use click::{ButtonQuery, for_each_click};
 pub use plain::draw_button;
 pub use textured::{draw_button_with_red_texture, draw_button_with_texture};
 

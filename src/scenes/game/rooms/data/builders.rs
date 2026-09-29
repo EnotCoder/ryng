@@ -54,9 +54,10 @@ pub(crate) use shot;
 
 /// One picture, one variant, player-driven. Covers most of the rooms.
 macro_rules! room {
-    ($path:expr, $title:expr, $story:expr, $sound:expr, $hotspots:expr) => {
+    ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, $hotspots:expr) => {
         RoomDef {
             sound: $sound,
+            music: $music,
             interactive: true,
             auto_next: None,
             variants: &[shot!($path, $title, $story, $hotspots)],
@@ -68,9 +69,10 @@ pub(crate) use room;
 
 /// A non-interactive beat: it plays, waits, then moves on by itself.
 macro_rules! beat {
-    ($path:expr, $title:expr, $story:expr, $sound:expr, $auto_next:expr) => {
+    ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, $auto_next:expr) => {
         RoomDef {
             sound: $sound,
+            music: $music,
             interactive: false,
             auto_next: $auto_next,
             variants: &[shot!($path, $title, $story, &[])],
@@ -82,9 +84,10 @@ pub(crate) use beat;
 
 /// A beat that also advances the act counter.
 macro_rules! chapter {
-    ($path:expr, $title:expr, $story:expr, $auto_next:expr, $act:expr) => {
+    ($path:expr, $title:expr, $story:expr, $music:expr, $auto_next:expr, $act:expr) => {
         RoomDef {
             sound: TransitionSound::None,
+            music: $music,
             interactive: false,
             auto_next: $auto_next,
             variants: &[shot!($path, $title, $story, &[])],
@@ -96,9 +99,10 @@ pub(crate) use chapter;
 
 /// Two or more pictures the player flips between.
 macro_rules! carousel {
-    ($sound:expr, $($variant:expr),+ $(,)?) => {
+    ($sound:expr, $music:expr, $($variant:expr),+ $(,)?) => {
         RoomDef {
             sound: $sound,
+            music: $music,
             interactive: true,
             auto_next: None,
             variants: &[$($variant),+],
@@ -116,6 +120,7 @@ macro_rules! side_room {
             $title,
             "",
             TransitionSound::NextRoom,
+            Music::Indoors,
             &[hop!(p::F2_HALL, 0.0, 0.0)]
         )
     };

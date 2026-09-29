@@ -8,31 +8,20 @@ use crate::scenes::settings::SettingsPanelOpen;
 use crate::state::GameState;
 
 pub fn menu_button_system(
-    mut query: Query<
-        (
-            Entity,
-            &Interaction,
-            &MenuAction,
-            Option<&mut BackgroundColor>,
-            Option<&mut ImageNode>,
-            Option<&mut Node>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
+    clicks: buttons::ButtonQuery<MenuAction>,
     mut was_pressed: Local<HashSet<Entity>>,
     settings_open: Res<SettingsPanelOpen>,
     mut next_state: ResMut<NextState<GameState>>,
     mut exit: MessageWriter<AppExit>,
     ui_scale: Res<UiScale>,
 ) {
-    for (entity, interaction, action, bg, img, node) in &mut query {
-        let visual = buttons::click_visual(interaction, &mut was_pressed, entity, ui_scale.0);
-        if buttons::apply_visual(visual, bg, img, node)
-            && !settings_open.0
-        {
+    buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |action| {
+        // Visuals are applied even while the panel is open; only the action is
+        // suppressed, so the underlying buttons keep their hover state.
+        if !settings_open.0 {
             fire_menu(action, &mut next_state, &mut exit);
         }
-    }
+    });
 }
 
 fn fire_menu(
