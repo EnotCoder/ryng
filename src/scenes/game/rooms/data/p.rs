@@ -23,4 +23,5 @@ pub const F2_HALL: &str = "tex/rooms/floor_2/room_1.png";
 pub const F2_CORRIDOR: &str = "tex/rooms/floor_2/room_2.png";
 pub const AP_1: &str = "tex/rooms/floor_2/ap_1.png";
 pub const AP_2: &str = "tex/rooms/floor_2/ap_2.png";
+pub const AP_3: &str = "tex/rooms/floor_2/ap_3.png";
 pub const MY_FLOOR: &str = "tex/rooms/my_floor/room_with_elevator_floor_my.png";

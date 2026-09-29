@@ -44,9 +44,9 @@ const PENDING: &[&str] = &[
 
 /// Textures on disk that no room shows yet - either unwired act 3 art or a
 /// leftover. Listed so the test catches *new* orphans without failing on
-/// content that is knowingly parked.
+/// content that is knowingly parked. `ap_3` left this list when the floor 2
+/// corridor gained a door into it.
 const PARKED_ASSETS: &[&str] = &[
-    "tex/rooms/floor_2/ap_3.png",
     "tex/rooms/my_floor/door_my_home.png",
     "tex/rooms/my_floor/door_nighbor_home.png",
     "tex/rooms/my_floor/open_door_my_home.png",

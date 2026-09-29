@@ -175,9 +175,28 @@ pub(super) static ROOMS: &[RoomDef] = &[
         )],
         next_act: Some(ActId::ActThree),
     },
-    side_room!(p::F2_CORRIDOR, "Floor 2 - Corridor"),
+    // The corridor: the main way back sits dead centre, the left-hand door
+    // opens into Apartment 3.
+    room!(
+        p::F2_CORRIDOR,
+        "Floor 2 - Corridor",
+        "",
+        TransitionSound::NextRoom,
+        Music::Indoors,
+        &[hop!(p::F2_HALL, 0.0, 0.0), hop!(p::AP_3, -470.0, 0.0)]
+    ),
     side_room!(p::AP_1, "Apartment 1"),
     side_room!(p::AP_2, "Apartment 2"),
+    // Apartment 3, reached from the corridor. Only a way back out, at the
+    // door on the right edge of the picture.
+    room!(
+        p::AP_3,
+        "Apartment 3",
+        "",
+        TransitionSound::NextRoom,
+        Music::Indoors,
+        &[hop!(p::F2_CORRIDOR, 540.0, 0.0)]
+    ),
     // -- Act 3, not reachable yet -------------------------------------------
     beat!(
         p::MY_FLOOR,
