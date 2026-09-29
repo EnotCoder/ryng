@@ -4,6 +4,9 @@ use crate::state::GameState;
 
 mod ui;
 
+#[cfg(test)]
+mod tests;
+
 pub use ui::ActiveInvSlot;
 
 pub struct InventoryUiPlugin;

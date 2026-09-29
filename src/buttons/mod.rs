@@ -19,6 +19,9 @@ mod click;
 mod plain;
 mod textured;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) use click::{ButtonQuery, for_each_click};
 pub use plain::draw_button;
 pub use textured::{draw_button_with_red_texture, draw_button_with_texture};
