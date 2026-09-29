@@ -82,7 +82,7 @@ pub fn room_fade_system(
                     spawn_room(
                         &mut commands,
                         &asset_server,
-                        def.variants.clone(),
+                        def.variants,
                         Vec3::ZERO,
                         def.interactive,
                     );

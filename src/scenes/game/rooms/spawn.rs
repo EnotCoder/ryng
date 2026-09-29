@@ -9,11 +9,11 @@ use crate::state::GameState;
 pub fn spawn_room(
     commands: &mut Commands,
     asset_server: &AssetServer,
-    variants: Vec<RoomVariant>,
+    variants: &'static [RoomVariant],
     pos: Vec3,
     interactive: bool,
 ) {
-    let first = variants[0].clone();
+    let first = variants[0];
     let mut root = commands.spawn((
         Room,
         RoomTitle(first.title),
@@ -47,11 +47,11 @@ pub fn spawn_room_content(
     } else {
         Color::NONE
     };
-    for def in &variant.hotspots {
+    for def in variant.hotspots {
         let mut child = parent.spawn((
             Hotspot,
             RoomPart,
-            def.action.clone(),
+            def.action,
             Sprite::from_color(hotspot_color, def.size),
             Transform::from_xyz(def.pos.x, def.pos.y, 1.0),
             Pickable::default(),

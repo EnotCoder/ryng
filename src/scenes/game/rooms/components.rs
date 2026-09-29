@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::acts::Item;
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Copy)]
 pub enum HotspotAction {
     GoToRoom(&'static str),
 }
@@ -27,20 +27,20 @@ pub struct RoomStory(pub &'static str);
 pub struct RoomPart;
 
 #[derive(Component)]
-pub struct RoomVariants(pub Vec<RoomVariant>);
+pub struct RoomVariants(pub &'static [RoomVariant]);
 
 #[derive(Component)]
 pub struct RoomVariantIndex(pub usize);
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct RoomVariant {
     pub path: &'static str,
     pub title: &'static str,
     pub story: &'static str,
-    pub hotspots: Vec<HotspotDef>,
+    pub hotspots: &'static [HotspotDef],
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct HotspotDef {
     pub action: HotspotAction,
     pub pos: Vec2,

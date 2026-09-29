@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use crate::scenes::game::rooms::components::{Room, RoomVariantIndex, RoomVariants};
 use crate::state::GameState;
 
+#[derive(Clone, Copy)]
 pub enum TransitionSound {
     NextRoom,
     NextRoomWithOpenDoor,

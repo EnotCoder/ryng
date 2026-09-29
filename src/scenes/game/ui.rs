@@ -4,7 +4,7 @@ use crate::UiScale;
 use crate::acts::{CurrentAct, default_act};
 use crate::buttons;
 use crate::scenes::fade::{RoomFade, spawn_fade_overlay};
-use crate::scenes::game::rooms::data::room_def;
+use crate::scenes::game::rooms::data::{all_paths, room_def};
 use crate::scenes::game::rooms::{
     components::{Room, RoomTitle},
     spawn::spawn_room,
@@ -137,23 +137,11 @@ pub fn spawn_game_ui(
 
     let start_room = default_act().start_room;
     let def = room_def(start_room, current_act.0);
-    let handles = vec![
-        asset_server.load("tex/rooms/floor_1/street_to_home_1.png"),
-        asset_server.load("tex/rooms/floor_1/street_to_home_2.png"),
-        asset_server.load("tex/rooms/floor_1/room_concierge.png"),
-        asset_server.load("tex/rooms/floor_1/room_concierge_dark.png"),
-        asset_server.load("tex/rooms/floor_1/room_with_elevator_floor_1.png"),
-        asset_server.load("tex/rooms/floor_1/room_with_elevator_floor_1_dont_work.png"),
-        asset_server.load("tex/rooms/floor_1/stairs_1_floor.png"),
-        asset_server.load("tex/rooms/elevator_Inside.png"),
-        asset_server.load("tex/rooms/basement/basement_with_elevator.png"),
-        asset_server.load("tex/rooms/basement/stairs_to_street_1.png"),
-        asset_server.load("tex/rooms/basement/stairs_to_street_2.png"),
-    ];
+    let handles: Vec<Handle<Image>> = all_paths().map(|path| asset_server.load(path)).collect();
     spawn_room(
         &mut commands,
         &asset_server,
-        def.variants.clone(),
+        def.variants,
         Vec3::ZERO,
         def.interactive,
     );

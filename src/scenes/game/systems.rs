@@ -130,7 +130,7 @@ pub fn carousel_system(
             continue;
         }
         variant_index.0 = new_index;
-        let variant = room_variants.0[new_index].clone();
+        let variant = room_variants.0[new_index];
         title.0 = variant.title;
         story.0 = variant.story;
         commands.entity(room).despawn_children();
