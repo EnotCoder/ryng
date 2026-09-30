@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::acts::Item;
 use crate::state::GameState;
 
 mod ui;
@@ -19,8 +20,12 @@ impl Plugin for InventoryUiPlugin {
             ui::InventoryTextures {
                 active_slot: asset_server.load("tex/ui/inv_active_slot.png"),
                 disabled_slot: asset_server.load("tex/ui/inv_disable_slot.png"),
-                icon_pass: asset_server.load("tex/ui/icons_inv/kon_card.png"),
-                icon_main_key: asset_server.load("tex/ui/icons_inv/main_key.png"),
+                // Every item is listed here, so an `Item` without an icon is a
+                // compile error rather than an empty slot in game.
+                icons: [Item::Pass, Item::MainKey, Item::Teddy]
+                    .into_iter()
+                    .map(|item| (item, asset_server.load(item.icon_path())))
+                    .collect(),
             }
         };
         app.insert_resource(textures)

@@ -46,6 +46,20 @@ pub fn play_transition_sound(
     }
 }
 
+/// A one-off effect that is not a room transition: a card hitting a counter, a
+/// toy being set down. Despawns itself when it finishes.
+#[derive(Component)]
+pub struct PlayingItemSound;
+
+pub fn play_item_sound(commands: &mut Commands, asset_server: &AssetServer) {
+    let handle: Handle<AudioSource> = asset_server.load("sounds/card_fall.mp3");
+    commands.spawn((
+        AudioPlayer(handle),
+        PlaybackSettings::DESPAWN,
+        PlayingItemSound,
+    ));
+}
+
 #[derive(Component)]
 pub struct PlayingBackgroundMusic(pub &'static str);
 

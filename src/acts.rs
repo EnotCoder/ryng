@@ -1,13 +1,27 @@
 use bevy::prelude::*;
 
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Item {
     Pass,
     MainKey,
+    Teddy,
+}
+
+impl Item {
+    /// The inventory icon for this item. Keeping the path with the variant means
+    /// a new item is one line here plus one in the icon table, rather than a new
+    /// field on `InventoryTextures` and another match to remember.
+    pub fn icon_path(self) -> &'static str {
+        match self {
+            Item::Pass => "tex/ui/icons_inv/kon_card.png",
+            Item::MainKey => "tex/ui/icons_inv/main_key.png",
+            Item::Teddy => "tex/ui/icons_inv/teddy.png",
+        }
+    }
 }
 
 /// One entry per inventory slot, `None` = empty slot.
-#[derive(Resource)]
+#[derive(Resource, Clone, PartialEq, Eq, Debug)]
 pub struct Inventory(pub Vec<Option<Item>>);
 
 impl Default for Inventory {

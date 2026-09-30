@@ -4,8 +4,27 @@
 //! classic place for an off-by-one to hide: a room with one variant must not
 //! move, and an empty room must not divide by zero.
 
-use super::systems::step;
+use bevy::prelude::*;
+
+use super::systems::{item_hotspot_visibility_system, step};
+use crate::scenes::game::items::Teddy;
 use crate::scenes::game::ui::CarouselDir;
+
+/// Bevy validates a system's queries when the system first runs, and panics
+/// with B0001 if two of its parameters write the same component without being
+/// declared disjoint. That panic happens at launch, not at build time, so
+/// nothing else in `cargo test` would notice it: `item_hotspot_visibility_system`
+/// hides both a hotspot and the chevron beside it, and both are `Visibility`.
+///
+/// Running the system in a bare app is the whole test.
+#[test]
+fn the_item_hotspot_system_has_no_conflicting_queries() {
+    let mut app = App::new();
+    app.add_plugins(MinimalPlugins)
+        .insert_resource(Teddy::Lying("tex/rooms/floor_2/ap_1.png"))
+        .add_systems(Update, item_hotspot_visibility_system);
+    app.update();
+}
 
 #[test]
 fn single_variant_has_nowhere_to_go() {

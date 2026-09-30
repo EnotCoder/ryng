@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 
 use crate::UiScale;
@@ -26,14 +28,14 @@ pub struct ActiveInvSlot(pub usize);
 pub struct InventoryTextures {
     pub active_slot: Handle<Image>,
     pub disabled_slot: Handle<Image>,
-    pub icon_pass: Handle<Image>,
-    pub icon_main_key: Handle<Image>,
+    /// One icon per `Item`, keyed by the item itself so adding a variant cannot
+    /// leave a slot without an icon.
+    pub icons: HashMap<Item, Handle<Image>>,
 }
 
-fn icon_handle(textures: &InventoryTextures, item: &Item) -> Handle<Image> {
-    match item {
-        Item::Pass => textures.icon_pass.clone(),
-        Item::MainKey => textures.icon_main_key.clone(),
+impl InventoryTextures {
+    fn icon(&self, item: &Item) -> Handle<Image> {
+        self.icons.get(item).cloned().unwrap_or_default()
     }
 }
 
@@ -85,7 +87,7 @@ pub fn spawn_inventory_ui(
                             SlotIcon { index, item },
                             ImageNode::new(
                                 item.as_ref()
-                                    .map(|it| icon_handle(&textures, it))
+                                    .map(|it| textures.icon(it))
                                     .unwrap_or_default(),
                             ),
                             Node {
@@ -142,7 +144,7 @@ pub fn update_inventory_ui(
         };
         img.image = item
             .as_ref()
-            .map(|it| icon_handle(&textures, it))
+            .map(|it| textures.icon(it))
             .unwrap_or_default();
     }
 }

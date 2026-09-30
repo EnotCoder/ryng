@@ -9,7 +9,10 @@ use crate::acts::{ActId, Item};
 use crate::scenes::game::rooms::components::{HotspotAction, HotspotDef, RoomVariant};
 use crate::scenes::sound::{Music, TransitionSound};
 
-use super::builders::{HOTSPOT_SIZE, beat, carousel, chapter, gated, hop, room, shot, side_room};
+use super::builders::{
+    HOTSPOT_SIZE, ITEM_HOTSPOT_SIZE, apartment, beat, carousel, chapter, drop, gated, hop, room,
+    shot, take,
+};
 use super::{RoomDef, p};
 
 /// Both halls share this second variant, so it is written once.
@@ -111,10 +114,14 @@ pub(super) static ROOMS: &[RoomDef] = &[
     room!(
         p::B_DEEP,
         "Basement Deep",
-        "",
+        "Something is lying on the floor.",
         TransitionSound::NextRoom,
         Music::Basement,
-        &[hop!(p::B_CORRIDOR, 0.0, 0.0)]
+        &[
+            hop!(p::B_CORRIDOR, 0.0, 0.0),
+            // The teddy, on the floor by the doorway.
+            take!(Item::Teddy, 60.0, -210.0)
+        ]
     ),
     room!(
         p::B_EXIT,
@@ -185,17 +192,19 @@ pub(super) static ROOMS: &[RoomDef] = &[
         Music::Indoors,
         &[hop!(p::F2_HALL, 0.0, 0.0), hop!(p::AP_3, -470.0, 0.0)]
     ),
-    side_room!(p::AP_1, "Apartment 1"),
-    side_room!(p::AP_2, "Apartment 2"),
-    // Apartment 3, reached from the corridor. Only a way back out, at the
-    // door on the right edge of the picture.
-    room!(
+    // The three apartments. Each can hold the teddy: a spot to leave it and a
+    // spot to pick it back up, so putting it down is not one-way.
+    apartment!(p::AP_1, "Apartment 1", p::F2_HALL, 0.0, 0.0, -240.0, -170.0),
+    apartment!(p::AP_2, "Apartment 2", p::F2_HALL, 0.0, 0.0, 210.0, -180.0),
+    // Apartment 3, reached from the corridor. The exit is on the right edge.
+    apartment!(
         p::AP_3,
         "Apartment 3",
-        "",
-        TransitionSound::NextRoom,
-        Music::Indoors,
-        &[hop!(p::F2_CORRIDOR, 540.0, 0.0)]
+        p::F2_CORRIDOR,
+        540.0,
+        0.0,
+        -190.0,
+        -190.0
     ),
     // -- Act 3, not reachable yet -------------------------------------------
     beat!(

@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
+use crate::scenes::game::items::ItemHotspot;
 use crate::scenes::game::rooms::components::{
-    Hotspot, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle, RoomVariant, RoomVariantIndex,
-    RoomVariants,
+    Hotspot, HotspotAction, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle, RoomVariant,
+    RoomVariantIndex, RoomVariants,
 };
 use crate::scenes::game::rooms::data::RoomDef;
 use crate::state::GameState;
@@ -59,6 +60,17 @@ pub fn spawn_room_content(
         ));
         if let Some(gate) = def.gate {
             child.insert(gate);
+        }
+        // Pickup and put-down spots come and go with the item, so they are
+        // marked to be found without walking every door in the room.
+        let is_item_hotspot = matches!(def.action, HotspotAction::Take(_) | HotspotAction::Drop(_));
+        if is_item_hotspot {
+            child.insert(ItemHotspot);
+        }
+        // A pickup hotspot sits on the item itself, which is the affordance; a
+        // blinking arrow on top of the teddy would only get in the way.
+        if matches!(def.action, HotspotAction::Take(_)) {
+            continue;
         }
         let side = def.size.x.min(def.size.y) / 20.0;
         parent.spawn((

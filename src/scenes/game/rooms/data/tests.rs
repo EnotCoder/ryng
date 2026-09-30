@@ -10,12 +10,15 @@ use super::table::ROOMS;
 use super::{RoomDef, all_paths, p, room_def};
 
 /// Every way out of a room: each hotspot plus the auto-next hand-off.
+///
+/// Pickups and drops are not edges; only `GoToRoom` moves the player.
 fn edges_of(room: &RoomDef) -> impl Iterator<Item = &'static str> {
     room.variants
         .iter()
         .flat_map(|variant| variant.hotspots.iter())
-        .map(|hotspot| match hotspot.action {
-            HotspotAction::GoToRoom(target) => target,
+        .filter_map(|hotspot| match hotspot.action {
+            HotspotAction::GoToRoom(target) => Some(target),
+            HotspotAction::Take(_) | HotspotAction::Drop(_) => None,
         })
         .chain(room.auto_next.map(|(target, _)| target))
 }

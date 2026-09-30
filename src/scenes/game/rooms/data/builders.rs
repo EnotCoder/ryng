@@ -14,6 +14,9 @@ use bevy::prelude::*;
 
 pub(crate) const HOTSPOT_SIZE: Vec2 = Vec2::new(200.0, 300.0);
 
+/// An item lying on the floor is a smaller target than a doorway.
+pub(crate) const ITEM_HOTSPOT_SIZE: Vec2 = Vec2::new(140.0, 140.0);
+
 /// A hotspot leading to `target`.
 macro_rules! hop {
     ($target:expr, $x:expr, $y:expr) => {
@@ -112,17 +115,48 @@ macro_rules! carousel {
 }
 pub(crate) use carousel;
 
-/// Floor 2 side rooms: one door back to the hall, no story.
-macro_rules! side_room {
-    ($path:expr, $title:expr) => {
+/// Pick an item up. The sprite itself is the affordance, so `spawn_room_content`
+/// skips the blinking chevron on these.
+macro_rules! take {
+    ($item:expr, $x:expr, $y:expr) => {
+        HotspotDef {
+            action: HotspotAction::Take($item),
+            pos: Vec2::new($x, $y),
+            size: ITEM_HOTSPOT_SIZE,
+            gate: None,
+        }
+    };
+}
+pub(crate) use take;
+
+/// Put the held item down here.
+macro_rules! drop {
+    ($item:expr, $x:expr, $y:expr) => {
+        HotspotDef {
+            action: HotspotAction::Drop($item),
+            pos: Vec2::new($x, $y),
+            size: ITEM_HOTSPOT_SIZE,
+            gate: None,
+        }
+    };
+}
+pub(crate) use drop;
+
+/// A floor 2 apartment: a way out, and somewhere to leave or retrieve the teddy.
+macro_rules! apartment {
+    ($path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr, $rest_x:expr, $rest_y:expr) => {
         room!(
             $path,
             $title,
             "",
             TransitionSound::NextRoom,
             Music::Indoors,
-            &[hop!(p::F2_HALL, 0.0, 0.0)]
+            &[
+                hop!($exit, $exit_x, $exit_y),
+                drop!(Item::Teddy, $rest_x, $rest_y),
+                take!(Item::Teddy, $rest_x, $rest_y)
+            ]
         )
     };
 }
-pub(crate) use side_room;
+pub(crate) use apartment;

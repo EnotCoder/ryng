@@ -5,6 +5,10 @@ use crate::acts::Item;
 #[derive(Component, Clone, Copy)]
 pub enum HotspotAction {
     GoToRoom(&'static str),
+    /// Pick the item up into the first free inventory slot.
+    Take(Item),
+    /// Put the item down, if it is held.
+    Drop(Item),
 }
 
 #[derive(Component)]
