@@ -10,8 +10,8 @@ use crate::scenes::game::rooms::components::{HotspotAction, HotspotDef, RoomVari
 use crate::scenes::sound::{Music, TransitionSound};
 
 use super::builders::{
-    HOTSPOT_SIZE, ITEM_HOTSPOT_SIZE, apartment, beat, carousel, chapter, drop, gated, hop, room,
-    shot, take,
+    HOTSPOT_SIZE, ITEM_HOTSPOT_SIZE, apartment, beat, carousel, chapter, drop, gated, hop, locked,
+    room, shot, take,
 };
 use super::{RoomDef, p};
 
@@ -182,21 +182,56 @@ pub(super) static ROOMS: &[RoomDef] = &[
         )],
         next_act: Some(ActId::ActThree),
     },
-    // The corridor: the main way back sits dead centre, the left-hand door
-    // opens into Apartment 3.
+    // The corridor: the way back to the hall is dead centre, the left-hand door
+    // opens into Apartment 3, and the upper panel of the black door is the one
+    // that needs all three tools.
     room!(
         p::F2_CORRIDOR,
         "Floor 2 - Corridor",
         "",
         TransitionSound::NextRoom,
         Music::Indoors,
-        &[hop!(p::F2_HALL, 0.0, 0.0), hop!(p::AP_3, -470.0, 0.0)]
+        &[
+            hop!(p::F2_HALL, 0.0, 0.0),
+            hop!(p::AP_3, -470.0, 0.0),
+            locked!(
+                p::STAIRS_1,
+                0.0,
+                255.0,
+                Vec2::new(200.0, 160.0),
+                &Item::DOOR_TOOLS
+            )
+        ]
     ),
-    // The three apartments. Each can hold the teddy: a spot to leave it and a
-    // spot to pick it back up, so putting it down is not one-way.
-    apartment!(p::AP_1, "Apartment 1", p::F2_HALL, 0.0, 0.0, -240.0, -170.0),
-    apartment!(p::AP_2, "Apartment 2", p::F2_HALL, 0.0, 0.0, 210.0, -180.0),
-    // Apartment 3, reached from the corridor. The exit is on the right edge.
+    // The three apartments. Each has a tool on the floor and can hold the teddy:
+    // a spot to leave it and a spot to pick it back up, so putting it down is
+    // not one-way.
+    apartment!(
+        p::AP_1,
+        "Apartment 1",
+        p::F2_HALL,
+        0.0,
+        0.0,
+        -240.0,
+        -170.0,
+        Item::Crowbar,
+        200.0,
+        -200.0
+    ),
+    apartment!(
+        p::AP_2,
+        "Apartment 2",
+        p::F2_HALL,
+        0.0,
+        0.0,
+        210.0,
+        -180.0,
+        Item::MetalCutters,
+        -230.0,
+        -190.0
+    ),
+    // Apartment 3, reached from the corridor. The exit is on the right edge, and
+    // its key is the last of the three the black door wants.
     apartment!(
         p::AP_3,
         "Apartment 3",
@@ -204,7 +239,10 @@ pub(super) static ROOMS: &[RoomDef] = &[
         540.0,
         0.0,
         -190.0,
-        -190.0
+        -190.0,
+        Item::KeyDoor2,
+        250.0,
+        -200.0
     ),
     // -- Act 3, not reachable yet -------------------------------------------
     beat!(

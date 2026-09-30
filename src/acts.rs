@@ -5,19 +5,31 @@ pub enum Item {
     Pass,
     MainKey,
     Teddy,
+    Crowbar,
+    MetalCutters,
+    KeyDoor2,
 }
 
 impl Item {
-    /// The inventory icon for this item. Keeping the path with the variant means
-    /// a new item is one line here plus one in the icon table, rather than a new
-    /// field on `InventoryTextures` and another match to remember.
+    /// The inventory icon for this item, and the same picture the item is drawn
+    /// with while it is lying on the floor. Keeping the path with the variant
+    /// means a new item is one line here plus one in the icon table, rather than
+    /// a new field on `InventoryTextures` and another match to remember.
     pub fn icon_path(self) -> &'static str {
         match self {
             Item::Pass => "tex/ui/icons_inv/kon_card.png",
             Item::MainKey => "tex/ui/icons_inv/main_key.png",
             Item::Teddy => "tex/ui/icons_inv/teddy.png",
+            Item::Crowbar => "tex/ui/icons_inv/crowbar.png",
+            Item::MetalCutters => "tex/ui/icons_inv/metal_cutters.png",
+            Item::KeyDoor2 => "tex/ui/icons_inv/key_door_2_floor.png",
         }
     }
+
+    /// The three tools that open the black door on floor 2. A door does not ask
+    /// for these one at a time, it needs the set, so they are named as a group
+    /// rather than repeated at every use site.
+    pub const DOOR_TOOLS: [Item; 3] = [Item::Crowbar, Item::MetalCutters, Item::KeyDoor2];
 }
 
 /// One entry per inventory slot, `None` = empty slot.

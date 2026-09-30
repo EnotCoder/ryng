@@ -22,10 +22,17 @@ impl Plugin for InventoryUiPlugin {
                 disabled_slot: asset_server.load("tex/ui/inv_disable_slot.png"),
                 // Every item is listed here, so an `Item` without an icon is a
                 // compile error rather than an empty slot in game.
-                icons: [Item::Pass, Item::MainKey, Item::Teddy]
-                    .into_iter()
-                    .map(|item| (item, asset_server.load(item.icon_path())))
-                    .collect(),
+                icons: [
+                    Item::Pass,
+                    Item::MainKey,
+                    Item::Teddy,
+                    Item::Crowbar,
+                    Item::MetalCutters,
+                    Item::KeyDoor2,
+                ]
+                .into_iter()
+                .map(|item| (item, asset_server.load(item.icon_path())))
+                .collect(),
             }
         };
         app.insert_resource(textures)

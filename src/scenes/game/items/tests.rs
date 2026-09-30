@@ -1,38 +1,46 @@
-//! Tests for carrying and setting down the teddy.
+//! Tests for items in the world: picking up, putting down, and the door that
+//! wants a set of them.
 //!
-//! `Teddy` is the single source of truth: the toy is either on the floor of one
-//! room or in the inventory, never both and never neither. These check the
-//! state machine cannot be talked into a state it should not reach, because a
-//! wrong state loses the only carryable item in the game.
+//! `WorldItems` is the single source of truth for what is lying where, so an
+//! item is either in one room or in the bag, never both and never neither. These
+//! check the state machine cannot be talked into a state it should not reach.
+
+use std::collections::HashSet;
 
 use crate::acts::{Inventory, Item};
-
-use super::{Teddy, first_free_slot, should_show_in, spot_is_live, try_drop, try_take};
 use crate::scenes::game::rooms::components::HotspotAction;
+
+use super::{
+    WorldItems, first_free_slot, holds_all, should_show_in, spot_is_live, try_drop, try_take,
+};
 
 const BASEMENT: &str = "tex/rooms/basement/basement_stairs_center_room.png";
 const AP_1: &str = "tex/rooms/floor_2/ap_1.png";
 const AP_2: &str = "tex/rooms/floor_2/ap_2.png";
+const AP_3: &str = "tex/rooms/floor_2/ap_3.png";
 const HALL: &str = "tex/rooms/floor_2/room_1.png";
 
-fn take() -> HotspotAction {
-    HotspotAction::Take(Item::Teddy)
+/// The layout the game starts with, matching `GamePlugin`.
+fn start() -> WorldItems {
+    WorldItems::with_resting([
+        (Item::Teddy, BASEMENT),
+        (Item::Crowbar, AP_1),
+        (Item::MetalCutters, AP_2),
+        (Item::KeyDoor2, AP_3),
+    ])
 }
 
-fn drop() -> HotspotAction {
-    HotspotAction::Drop(Item::Teddy)
-}
-
-fn with_two_free_slots() -> Inventory {
+/// Two free slots, which is what the player has mid-game once the pass is gone.
+fn bag() -> Inventory {
     Inventory(vec![Some(Item::Pass), None, None, Some(Item::MainKey)])
 }
 
-fn full_inventory() -> Inventory {
+fn full() -> Inventory {
     Inventory(vec![
         Some(Item::Pass),
         Some(Item::MainKey),
-        Some(Item::Pass),
-        Some(Item::Pass),
+        Some(Item::Crowbar),
+        Some(Item::KeyDoor2),
     ])
 }
 
@@ -48,343 +56,447 @@ fn the_first_empty_slot_is_found() {
 
 #[test]
 fn a_full_inventory_has_no_free_slot() {
-    assert_eq!(first_free_slot(&full_inventory()), None);
-}
-
-#[test]
-fn a_fully_empty_inventory_uses_the_first_slot() {
-    assert_eq!(
-        first_free_slot(&Inventory(vec![None, None, None, None])),
-        Some(0)
-    );
+    assert_eq!(first_free_slot(&full()), None);
 }
 
 // ------------------------------------------------------------------ picking up
 
 #[test]
 fn taking_from_the_room_it_lies_in_succeeds() {
-    let mut teddy = Teddy::Lying(BASEMENT);
-    let mut inventory = with_two_free_slots();
+    let mut world = start();
+    let mut inventory = bag();
 
-    assert!(try_take(&mut teddy, BASEMENT, &mut inventory));
-    assert_eq!(teddy, Teddy::Carried);
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    assert_eq!(world.resting_in(Item::Teddy), None, "still in the world");
     assert_eq!(inventory.0[1], Some(Item::Teddy), "went into the first gap");
+}
+
+/// Every starting item is reachable in the room it starts in, and only there.
+#[test]
+fn every_starting_item_is_where_it_should_be() {
+    for (item, room) in [
+        (Item::Teddy, BASEMENT),
+        (Item::Crowbar, AP_1),
+        (Item::MetalCutters, AP_2),
+        (Item::KeyDoor2, AP_3),
+    ] {
+        let mut world = start();
+        let mut inventory = Inventory(vec![None, None, None, None]);
+        assert!(try_take(&mut world, item, room, &mut inventory), "{item:?}");
+        assert_eq!(world.resting_in(item), None);
+    }
 }
 
 #[test]
 fn taking_it_from_any_other_room_does_nothing() {
-    for room in [AP_1, AP_2, "tex/rooms/floor_2/room_1.png"] {
-        let mut teddy = Teddy::Lying(BASEMENT);
-        let mut inventory = with_two_free_slots();
-        assert!(
-            !try_take(&mut teddy, room, &mut inventory),
-            "took it from {room}"
-        );
-        assert_eq!(teddy, Teddy::Lying(BASEMENT), "state changed from {room}");
-        assert_eq!(
-            inventory.0,
-            with_two_free_slots().0,
-            "inventory changed from {room}"
-        );
+    for item in [Item::Teddy, Item::Crowbar, Item::KeyDoor2] {
+        let mut world = start();
+        let mut inventory = bag();
+        for room in [BASEMENT, AP_1, AP_2, AP_3, HALL] {
+            // Compare against where it was *before* the attempt, since a
+            // successful take removes it from the world.
+            let was_here = world.resting_in(item) == Some(room);
+            let before = inventory.clone();
+            let ok = try_take(&mut world, item, room, &mut inventory);
+            assert_eq!(
+                ok, was_here,
+                "{item:?} in the wrong room {room} reported {ok}",
+            );
+            if !ok {
+                assert_eq!(inventory, before, "inventory changed for {item:?}");
+            }
+        }
     }
 }
 
 #[test]
 fn it_cannot_be_taken_twice() {
-    let mut teddy = Teddy::Lying(BASEMENT);
-    let mut inventory = with_two_free_slots();
+    let mut world = start();
+    let mut inventory = bag();
 
-    assert!(try_take(&mut teddy, BASEMENT, &mut inventory));
-    assert!(
-        !try_take(&mut teddy, BASEMENT, &mut inventory),
-        "picked up twice"
-    );
-    assert_eq!(
-        inventory
-            .0
-            .iter()
-            .filter(|slot| **slot == Some(Item::Teddy))
-            .count(),
-        1,
-        "the teddy is in two slots",
-    );
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    assert!(!try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    let held = inventory
+        .0
+        .iter()
+        .filter(|s| **s == Some(Item::Teddy))
+        .count();
+    assert_eq!(held, 1, "the teddy is in two slots");
 }
 
 /// A full inventory refuses the pickup rather than overwriting something. There
-/// is no message system, so it is a silent no-op - but the toy must not vanish.
+/// is no message system, so it is a silent no-op - but the item must not vanish.
 #[test]
-fn a_full_inventory_refuses_the_take_and_keeps_the_teddy() {
-    let mut teddy = Teddy::Lying(BASEMENT);
-    let mut inventory = full_inventory();
+fn a_full_inventory_refuses_the_take_and_keeps_the_item() {
+    for item in [Item::Teddy, Item::Crowbar, Item::KeyDoor2] {
+        let room = world_room_of(item);
+        let mut world = start();
+        let mut inventory = full();
 
-    assert!(!try_take(&mut teddy, BASEMENT, &mut inventory));
-    assert_eq!(teddy, Teddy::Lying(BASEMENT), "the teddy was lost");
-    assert_eq!(inventory, full_inventory(), "a slot was overwritten");
+        assert!(!try_take(&mut world, item, room, &mut inventory));
+        assert_eq!(world.resting_in(item), Some(room), "{item:?} was lost",);
+        assert_eq!(inventory, full(), "a slot was overwritten for {item:?}");
+    }
+}
+
+fn world_room_of(item: Item) -> &'static str {
+    match item {
+        Item::Teddy => BASEMENT,
+        Item::Crowbar => AP_1,
+        Item::MetalCutters => AP_2,
+        Item::KeyDoor2 => AP_3,
+        _ => HALL,
+    }
 }
 
 // -------------------------------------------------------------- putting down
 
 #[test]
-fn dropping_where_carried_lands_the_teddy() {
-    let mut teddy = Teddy::Carried;
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
+fn dropping_where_carried_lands_the_item() {
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
 
-    assert!(try_drop(&mut teddy, AP_1, &mut inventory, 1));
-    assert_eq!(teddy, Teddy::Lying(AP_1));
+    assert!(try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 1));
+    assert_eq!(world.resting_in(Item::Teddy), Some(AP_1));
     assert_eq!(inventory.0[1], None, "the slot it left should be empty");
 }
 
-/// The drop point only works for the slot that actually holds the toy, so
+/// The drop point only works for the slot that actually holds the item, so
 /// clicking around with another item selected does not consume it.
 #[test]
-fn dropping_needs_the_teddy_in_the_active_slot() {
-    let mut teddy = Teddy::Carried;
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
+fn dropping_needs_the_item_in_the_active_slot() {
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
     inventory.0[3] = Some(Item::MainKey);
 
-    assert!(
-        !try_drop(&mut teddy, AP_1, &mut inventory, 3),
-        "dropped the wrong item"
+    assert!(!try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 3));
+    assert_eq!(
+        world.resting_in(Item::Teddy),
+        None,
+        "the teddy was consumed"
     );
-    assert_eq!(teddy, Teddy::Carried, "state changed anyway");
-    assert_eq!(inventory.0[1], Some(Item::Teddy), "the teddy was consumed");
-}
-
-#[test]
-fn dropping_with_nothing_selected_does_nothing() {
-    let mut teddy = Teddy::Carried;
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
-
-    assert!(
-        !try_drop(&mut teddy, AP_1, &mut inventory, 2),
-        "slot 2 is empty"
-    );
-    assert_eq!(teddy, Teddy::Carried);
+    assert_eq!(inventory.0[1], Some(Item::Teddy));
 }
 
 #[test]
 fn an_out_of_range_slot_does_not_panic() {
-    let mut teddy = Teddy::Carried;
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
 
-    assert!(!try_drop(&mut teddy, AP_1, &mut inventory, 99));
-    assert_eq!(teddy, Teddy::Carried);
+    assert!(!try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 99));
+    assert_eq!(world.resting_in(Item::Teddy), None);
 }
 
-/// A second drop is impossible while carrying is false, so the toy can never be
-/// placed in two apartments.
+/// An item already lying somewhere is not in hand, so it cannot also be dropped
+/// - that would duplicate it into a second room.
 #[test]
 fn it_cannot_be_dropped_while_it_is_lying_somewhere() {
-    let mut teddy = Teddy::Lying(AP_1);
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
+    for item in [Item::Crowbar, Item::MetalCutters, Item::KeyDoor2] {
+        let room = world_room_of(item);
+        let mut world = start();
+        let mut inventory = bag();
+        inventory.0[1] = Some(item);
 
-    assert!(!try_drop(&mut teddy, AP_2, &mut inventory, 1));
-    assert_eq!(
-        teddy,
-        Teddy::Lying(AP_1),
-        "the toy teleported to another room"
-    );
+        assert!(!try_drop(&mut world, item, AP_2, &mut inventory, 1));
+        assert_eq!(world.resting_in(item), Some(room), "{item:?} teleported");
+    }
 }
 
 // -------------------------------------------------------------- round trips
 
-/// Taking it and putting it down again must land back in the inventory, not
-/// leave the toy in a state where it is neither carried nor in the room.
 #[test]
 fn a_full_round_trip_returns_to_the_starting_state() {
-    let start_inventory = with_two_free_slots();
-
-    let mut teddy = Teddy::Lying(BASEMENT);
+    let start_inventory = bag();
+    let mut world = start();
     let mut inventory = start_inventory.clone();
-    assert!(try_take(&mut teddy, BASEMENT, &mut inventory));
-    assert!(try_drop(&mut teddy, AP_2, &mut inventory, 1));
 
-    assert_eq!(teddy, Teddy::Lying(AP_2));
-    assert_eq!(
-        inventory, start_inventory,
-        "inventory did not return to its start"
-    );
-    assert!(
-        !inventory.0.contains(&Some(Item::Teddy)),
-        "the teddy is both on the floor and in the inventory",
-    );
-}
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    assert!(try_drop(&mut world, Item::Teddy, AP_2, &mut inventory, 1));
 
-#[test]
-fn it_can_be_moved_between_apartments() {
-    // It starts on the floor in Apartment 1, is picked up there, and carried to
-    // Apartment 2. Dropping requires it to be carried, so the trip has to start
-    // with a take.
-    let mut teddy = Teddy::Lying(AP_1);
-    let mut inventory = with_two_free_slots();
-
-    assert!(try_take(&mut teddy, AP_1, &mut inventory));
-    assert!(try_drop(&mut teddy, AP_2, &mut inventory, 1));
-    assert_eq!(teddy, Teddy::Lying(AP_2));
+    assert_eq!(world.resting_in(Item::Teddy), Some(AP_2));
+    assert_eq!(inventory, start_inventory, "inventory did not return");
     assert!(!inventory.0.contains(&Some(Item::Teddy)));
 }
 
-/// The same room can be used to put it down and pick it straight back up, which
-/// is what happens if the player changes their mind in an apartment.
 #[test]
 fn it_can_be_dropped_and_taken_in_the_same_room() {
-    let mut teddy = Teddy::Carried;
-    let mut inventory = with_two_free_slots();
-    inventory.0[1] = Some(Item::Teddy);
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
 
-    assert!(try_drop(&mut teddy, AP_1, &mut inventory, 1));
-    assert!(try_take(&mut teddy, AP_1, &mut inventory));
-    assert_eq!(teddy, Teddy::Carried);
-    assert_eq!(inventory.0[1], Some(Item::Teddy));
+    assert!(try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 1));
+    assert!(try_take(&mut world, Item::Teddy, AP_1, &mut inventory));
+    assert_eq!(world.resting_in(Item::Teddy), None);
 }
 
 // ------------------------------------------------------------------ drawing
 
 #[test]
 fn it_is_drawn_only_in_the_room_it_rests_in() {
-    let teddy = Teddy::Lying(BASEMENT);
-    assert!(should_show_in(&teddy, BASEMENT));
-    assert!(!should_show_in(&teddy, AP_1));
-    assert!(!should_show_in(&teddy, AP_2));
+    let world = start();
+    for (item, room) in [
+        (Item::Teddy, BASEMENT),
+        (Item::Crowbar, AP_1),
+        (Item::MetalCutters, AP_2),
+        (Item::KeyDoor2, AP_3),
+    ] {
+        assert!(should_show_in(&world, item, room), "{item:?} in {room}");
+        for elsewhere in [BASEMENT, AP_1, AP_2, AP_3, HALL] {
+            if elsewhere != room {
+                assert!(
+                    !should_show_in(&world, item, elsewhere),
+                    "{item:?} drawn in {elsewhere} too",
+                );
+            }
+        }
+    }
 }
 
 #[test]
-fn a_carried_teddy_is_drawn_nowhere() {
-    let teddy = Teddy::Carried;
-    for room in [BASEMENT, AP_1, AP_2, "tex/rooms/floor_2/room_1.png"] {
+fn a_carried_item_is_drawn_nowhere() {
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+
+    for room in [BASEMENT, AP_1, AP_2, AP_3, HALL] {
         assert!(
-            !should_show_in(&teddy, room),
-            "drawn in {room} while carried"
+            !should_show_in(&world, Item::Teddy, room),
+            "drawn in {room}"
         );
     }
 }
 
-/// The sprite follows the state, so the two cannot disagree about where the toy
-/// is once a real round trip has happened.
-#[test]
-fn the_sprite_follows_the_state_through_a_take() {
-    let mut teddy = Teddy::Lying(BASEMENT);
-    let mut inventory = with_two_free_slots();
-
-    assert!(should_show_in(&teddy, BASEMENT));
-    assert!(try_take(&mut teddy, BASEMENT, &mut inventory));
-    assert!(
-        !should_show_in(&teddy, BASEMENT),
-        "still drawn after being taken"
-    );
-}
-
 // ------------------------------------------------------- which spots are live
 
-/// With the teddy in hand, every put-down spot on the floor is offered.
 #[test]
 fn a_carried_teddy_offers_every_drop_spot() {
-    let teddy = Teddy::Carried;
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+
     for room in [BASEMENT, AP_1, AP_2, HALL] {
         assert!(
-            spot_is_live(&teddy, room, &drop()),
-            "no drop spot in {room}"
+            spot_is_live(&world, room, &HotspotAction::Drop(Item::Teddy)),
+            "no drop spot in {room}",
         );
         assert!(
-            !spot_is_live(&teddy, room, &take()),
+            !spot_is_live(&world, room, &HotspotAction::Take(Item::Teddy)),
             "a pickup spot offered in {room} with nothing on the floor",
         );
     }
 }
 
-/// The request: leaving it in a flat clears the drop spot there and in the other
-/// two, and leaves a pickup spot only where it now rests.
+/// The request that started it: leaving the teddy in a flat clears the drop spot
+/// there and in the other two, and leaves a pickup spot only where it now rests.
 #[test]
 fn leaving_it_clears_every_drop_spot() {
-    let teddy = Teddy::Lying(AP_1);
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    assert!(try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 1));
+
     for room in [BASEMENT, AP_1, AP_2, HALL] {
         assert!(
-            !spot_is_live(&teddy, room, &drop()),
+            !spot_is_live(&world, room, &HotspotAction::Drop(Item::Teddy)),
             "a drop spot was left showing in {room}",
         );
     }
-    assert!(
-        spot_is_live(&teddy, AP_1, &take()),
-        "cannot pick it back up"
-    );
-    assert!(
-        !spot_is_live(&teddy, AP_2, &take()),
-        "pickup spot in the wrong flat"
-    );
-    assert!(
-        !spot_is_live(&teddy, BASEMENT, &take()),
-        "pickup spot in the basement"
-    );
+    assert!(spot_is_live(
+        &world,
+        AP_1,
+        &HotspotAction::Take(Item::Teddy)
+    ));
+    assert!(!spot_is_live(
+        &world,
+        AP_2,
+        &HotspotAction::Take(Item::Teddy)
+    ));
 }
 
-/// Only the room it is in offers a pickup, so the other flats are inert.
 #[test]
-fn only_the_room_holding_it_offers_a_pickup() {
-    for resting in [BASEMENT, AP_1, AP_2] {
-        let teddy = Teddy::Lying(resting);
-        for room in [BASEMENT, AP_1, AP_2, HALL] {
-            assert_eq!(
-                spot_is_live(&teddy, room, &take()),
-                room == resting,
-                "pickup spot wrong in {room} while it rests in {resting}",
-            );
-        }
+fn a_tool_in_hand_offers_a_drop_spot_everywhere() {
+    let mut world = start();
+    let mut inventory = bag();
+    assert!(try_take(&mut world, Item::Crowbar, AP_1, &mut inventory));
+
+    for room in [BASEMENT, AP_1, AP_2, HALL] {
+        assert!(
+            spot_is_live(&world, room, &HotspotAction::Drop(Item::Crowbar)),
+            "no drop spot in {room}",
+        );
     }
 }
 
-/// Doors belong to the room and are never hidden by any of this.
 #[test]
 fn doors_are_never_hidden() {
     let door = HotspotAction::GoToRoom(AP_1);
-    for teddy in [Teddy::Carried, Teddy::Lying(AP_1), Teddy::Lying(BASEMENT)] {
+    for mut world in [start(), WorldItems::default()] {
+        let _ = &mut world;
         for room in [BASEMENT, AP_1, AP_2, HALL] {
             assert!(
-                spot_is_live(&teddy, room, &door),
+                spot_is_live(&world, room, &door),
                 "a door vanished in {room}"
             );
         }
     }
 }
 
-/// Every move the player can make must leave the spots consistent, so no walk
-/// through the game can leave a spot showing where there is nothing to use.
+// ------------------------------------------------------------- the locked door
+
 #[test]
-fn no_sequence_of_moves_leaves_a_stale_spot() {
-    let rooms = [BASEMENT, AP_1, AP_2, HALL];
-    let mut teddy = Teddy::Lying(BASEMENT);
-    let mut inventory = with_two_free_slots();
+fn the_door_stays_shut_with_nothing_collected() {
+    let inventory = bag();
+    assert!(!holds_all(&inventory, &Item::DOOR_TOOLS));
+}
 
-    assert!(try_take(&mut teddy, BASEMENT, &mut inventory));
-    for room in [AP_1, AP_2] {
+#[test]
+fn the_door_stays_shut_with_only_some_of_the_tools() {
+    let collected = Item::DOOR_TOOLS.to_vec();
+    for missing in 0..Item::DOOR_TOOLS.len() {
+        let held: Vec<Item> = collected
+            .iter()
+            .copied()
+            .filter(|item| *item != Item::DOOR_TOOLS[missing])
+            .collect();
+        let inventory = Inventory(vec![
+            Some(held[0]),
+            Some(held[1]),
+            None,
+            Some(Item::MainKey),
+        ]);
         assert!(
-            spot_is_live(&teddy, room, &drop()),
-            "{room} before dropping"
+            !holds_all(&inventory, &Item::DOOR_TOOLS),
+            "the door opened while {:?} was missing",
+            Item::DOOR_TOOLS[missing]
         );
-
-        assert!(try_drop(&mut teddy, room, &mut inventory, 1));
-        for other in rooms {
-            assert!(
-                !spot_is_live(&teddy, other, &drop()),
-                "stale drop spot in {other}"
-            );
-            assert_eq!(
-                spot_is_live(&teddy, other, &take()),
-                other == room,
-                "pickup spot wrong in {other}",
-            );
-        }
-
-        assert!(try_take(&mut teddy, room, &mut inventory));
-        for other in rooms {
-            assert!(
-                !spot_is_live(&teddy, other, &take()),
-                "stale pickup spot in {other}"
-            );
-        }
     }
+}
+
+#[test]
+fn the_door_opens_with_all_three() {
+    let tools = Item::DOOR_TOOLS;
+    let inventory = Inventory(vec![
+        Some(tools[0]),
+        None,
+        Some(tools[1]),
+        Some(Item::MainKey),
+    ]);
+    assert!(!holds_all(&inventory, &tools), "two of three is enough");
+
+    let inventory = Inventory(vec![
+        Some(tools[0]),
+        Some(tools[1]),
+        Some(tools[2]),
+        Some(Item::MainKey),
+    ]);
+    assert!(holds_all(&inventory, &tools));
+}
+
+/// Order in the bag must not matter, and duplicates of one tool must not stand
+/// in for another.
+#[test]
+fn order_does_not_matter_and_duplicates_do_not_count() {
+    let tools = Item::DOOR_TOOLS;
+    let shuffled = Inventory(vec![Some(tools[2]), Some(tools[0]), None, Some(tools[1])]);
+    assert!(holds_all(&shuffled, &tools));
+
+    let two_of_one = Inventory(vec![
+        Some(tools[0]),
+        Some(tools[0]),
+        Some(tools[1]),
+        Some(Item::MainKey),
+    ]);
+    assert!(
+        !holds_all(&two_of_one, &tools),
+        "a duplicate stood in for a tool"
+    );
+}
+
+/// Checking the door must not consume anything - the tools are still needed to
+/// walk back through.
+#[test]
+fn the_tools_are_needed_again_on_the_way_back() {
+    let tools = Item::DOOR_TOOLS;
+    let inventory = Inventory(vec![Some(tools[0]), Some(tools[1]), Some(tools[2]), None]);
+    for _ in 0..2 {
+        assert!(holds_all(&inventory, &tools));
+    }
+    let kept = inventory
+        .0
+        .iter()
+        .filter(|slot| slot.is_some_and(|item| tools.contains(&item)))
+        .count();
+    assert_eq!(kept, 3, "checking the door consumed a tool");
+}
+
+#[test]
+fn an_empty_requirement_is_always_satisfied() {
+    let empty: &[Item] = &[];
+    assert!(holds_all(&full(), empty));
+    assert!(holds_all(&Inventory(vec![None; 4]), empty));
+}
+
+/// The three tools are distinct and are not any of the items the player already
+/// had, or a door could be opened with the pass.
+#[test]
+fn the_tools_are_distinct_and_new() {
+    let tools = Item::DOOR_TOOLS;
+    let unique: HashSet<Item> = tools.iter().copied().collect();
+    assert_eq!(unique.len(), tools.len(), "the same tool is listed twice");
+    for tool in tools {
+        assert!(tool != Item::Pass, "the pass is one of the tools");
+        assert!(tool != Item::MainKey, "the key is one of the tools");
+    }
+}
+
+/// Collecting all three in the intended order works end to end, and the bag ends
+/// up full - which is why the teddy has to be left somewhere first.
+#[test]
+fn collecting_all_three_works_and_fills_the_bag() {
+    let mut world = start();
+    let mut inventory = Inventory(vec![None, None, None, Some(Item::MainKey)]);
+
+    for tool in Item::DOOR_TOOLS {
+        let room = world_room_of(tool);
+        assert!(try_take(&mut world, tool, room, &mut inventory), "{tool:?}");
+    }
+    assert!(holds_all(&inventory, &Item::DOOR_TOOLS));
+    assert_eq!(first_free_slot(&inventory), None, "the bag should be full");
+}
+
+/// Picking up a tool while the teddy is still held is impossible, and the tool
+/// stays on the floor rather than overwriting the toy.
+#[test]
+fn the_teddy_must_be_left_before_the_bag_fills() {
+    let mut world = start();
+    let mut inventory = Inventory(vec![None, None, None, Some(Item::MainKey)]);
+
+    assert!(try_take(&mut world, Item::Teddy, BASEMENT, &mut inventory));
+    // Two of the three fit.
+    assert!(try_take(&mut world, Item::Crowbar, AP_1, &mut inventory));
+    assert!(try_take(
+        &mut world,
+        Item::MetalCutters,
+        AP_2,
+        &mut inventory
+    ));
+    // The third does not, and the teddy is safe.
+    assert!(!try_take(&mut world, Item::KeyDoor2, AP_3, &mut inventory));
+    assert_eq!(world.resting_in(Item::KeyDoor2), Some(AP_3));
+    assert_eq!(
+        inventory
+            .0
+            .iter()
+            .filter(|s| **s == Some(Item::Teddy))
+            .count(),
+        1
+    );
+
+    // Leaving the teddy frees the slot and the last tool comes in.
+    assert!(try_drop(&mut world, Item::Teddy, AP_1, &mut inventory, 0));
+    assert!(try_take(&mut world, Item::KeyDoor2, AP_3, &mut inventory));
+    assert!(holds_all(&inventory, &Item::DOOR_TOOLS));
 }

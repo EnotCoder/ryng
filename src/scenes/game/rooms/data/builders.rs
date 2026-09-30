@@ -25,6 +25,7 @@ macro_rules! hop {
             pos: Vec2::new($x, $y),
             size: HOTSPOT_SIZE,
             gate: None,
+            require: &[],
         }
     };
 }
@@ -38,6 +39,7 @@ macro_rules! gated {
             pos: Vec2::new($x, $y),
             size: HOTSPOT_SIZE,
             gate: Some($item),
+            require: &[],
         }
     };
 }
@@ -124,6 +126,7 @@ macro_rules! take {
             pos: Vec2::new($x, $y),
             size: ITEM_HOTSPOT_SIZE,
             gate: None,
+            require: &[],
         }
     };
 }
@@ -137,14 +140,37 @@ macro_rules! drop {
             pos: Vec2::new($x, $y),
             size: ITEM_HOTSPOT_SIZE,
             gate: None,
+            require: &[],
         }
     };
 }
 pub(crate) use drop;
 
-/// A floor 2 apartment: a way out, and somewhere to leave or retrieve the teddy.
+/// A door that only opens once every one of `$items` is in the bag. None of them
+/// is spent, so the player can still walk back through afterwards. `$items` is a
+/// slice rather than a list, so a set can be named at the use site -
+/// `Item::DOOR_TOOLS` for the three tools on the floor 2 door.
+macro_rules! locked {
+    ($target:expr, $x:expr, $y:expr, $size:expr, $items:expr) => {
+        HotspotDef {
+            action: HotspotAction::GoToRoom($target),
+            pos: Vec2::new($x, $y),
+            size: $size,
+            gate: None,
+            require: $items,
+        }
+    };
+}
+pub(crate) use locked;
+
+/// A floor 2 apartment: a way out, a tool lying on the floor, and somewhere to
+/// leave or retrieve the teddy.
 macro_rules! apartment {
-    ($path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr, $rest_x:expr, $rest_y:expr) => {
+    (
+        $path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr,
+        $rest_x:expr, $rest_y:expr,
+        $tool:expr, $tool_x:expr, $tool_y:expr
+    ) => {
         room!(
             $path,
             $title,
@@ -154,7 +180,8 @@ macro_rules! apartment {
             &[
                 hop!($exit, $exit_x, $exit_y),
                 drop!(Item::Teddy, $rest_x, $rest_y),
-                take!(Item::Teddy, $rest_x, $rest_y)
+                take!(Item::Teddy, $rest_x, $rest_y),
+                take!($tool, $tool_x, $tool_y)
             ]
         )
     };

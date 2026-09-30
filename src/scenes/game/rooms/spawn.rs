@@ -54,6 +54,9 @@ pub fn spawn_room_content(
             Hotspot,
             RoomPart,
             def.action,
+            // The whole definition, so a system can read the tool requirement
+            // without keeping a parallel copy of it.
+            *def,
             Sprite::from_color(hotspot_color, def.size),
             Transform::from_xyz(def.pos.x, def.pos.y, 1.0),
             Pickable::default(),

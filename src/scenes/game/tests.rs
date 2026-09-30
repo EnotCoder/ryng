@@ -7,7 +7,8 @@
 use bevy::prelude::*;
 
 use super::systems::{item_hotspot_visibility_system, step};
-use crate::scenes::game::items::Teddy;
+use crate::acts::Item;
+use crate::scenes::game::items::WorldItems;
 use crate::scenes::game::ui::CarouselDir;
 
 /// Bevy validates a system's queries when the system first runs, and panics
@@ -21,7 +22,10 @@ use crate::scenes::game::ui::CarouselDir;
 fn the_item_hotspot_system_has_no_conflicting_queries() {
     let mut app = App::new();
     app.add_plugins(MinimalPlugins)
-        .insert_resource(Teddy::Lying("tex/rooms/floor_2/ap_1.png"))
+        .insert_resource(WorldItems::with_resting([(
+            Item::Teddy,
+            "tex/rooms/floor_2/ap_1.png",
+        )]))
         .add_systems(Update, item_hotspot_visibility_system);
     app.update();
 }

@@ -44,10 +44,15 @@ pub struct RoomVariant {
     pub hotspots: &'static [HotspotDef],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub struct HotspotDef {
     pub action: HotspotAction,
     pub pos: Vec2,
     pub size: Vec2,
+    /// Spend this one item to pass, as the concierge desk does with the pass.
+    /// Empty for an ordinary door.
     pub gate: Option<Item>,
+    /// Pass only while carrying all of these. Unlike `gate` they are not
+    /// consumed - the tools on the floor 2 door stay in the bag afterwards.
+    pub require: &'static [Item],
 }
