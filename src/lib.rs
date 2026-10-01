@@ -10,7 +10,21 @@ pub mod state;
 use state::GameState;
 
 pub const DEBUG_SHOW_HOTSPOTS: bool = false;
+
+/// Whether the hotspot editor is running.
+///
+/// This is the feature, not a separate switch: `cargo run --features
+/// hotspot-editor` turns the editor on and a plain `cargo run` compiles it out
+/// entirely. There is deliberately no `const` here, because a constant that
+/// silently disables a whole module is worse than not having one at all - it looks
+/// like the editor is running and it is not.
+pub const DEBUG_HOTSPOT_EDIT: bool = cfg!(feature = "hotspot-editor");
+
 pub const DESIGN_HEIGHT: f32 = 720.0;
+
+/// Half-width and half-height of the visible frame, in the same units as room
+/// art. The camera is `FixedVertical` at `DESIGN_HEIGHT`, so this is fixed.
+pub const FRAME_HALF: Vec2 = Vec2::new(640.0, 360.0);
 
 /// Design-space to screen scale. UI code multiplies its constants by this so a
 /// layout authored against `DESIGN_HEIGHT` keeps its proportions.

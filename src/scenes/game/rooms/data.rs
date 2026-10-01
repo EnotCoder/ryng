@@ -51,6 +51,28 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
         .unwrap_or(UNKNOWN)
 }
 
+/// The rectangle `hop!` gives a door when no size is given. `describe` compares
+/// against it so it can leave the argument out of the line it prints.
+#[cfg(feature = "hotspot-editor")]
+pub(crate) fn door_size_default() -> Vec2 {
+    builders::HOTSPOT_SIZE
+}
+
+/// Every room key, in table order.
+///
+/// The keys are the first variant of each row; a secondary carousel variant has
+/// no row of its own and would look up as `UNKNOWN`, so those are not listed.
+#[cfg(feature = "hotspot-editor")]
+pub(crate) fn room_keys() -> impl Iterator<Item = &'static str> {
+    ROOMS.iter().map(|def| def.variants[0].path)
+}
+
+/// `room_keys` as an indexable list, for stepping through rooms.
+#[cfg(feature = "hotspot-editor")]
+pub(crate) fn room_key_list() -> Vec<&'static str> {
+    room_keys().collect()
+}
+
 /// Every picture the game needs, for the loading overlay.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
     ROOMS

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::acts::Item;
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub enum HotspotAction {
     GoToRoom(&'static str),
     /// Pick the item up into the first free inventory slot.
@@ -50,7 +50,7 @@ pub struct RoomVariant {
     pub hotspots: &'static [HotspotDef],
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub struct HotspotDef {
     pub action: HotspotAction,
     pub pos: Vec2,

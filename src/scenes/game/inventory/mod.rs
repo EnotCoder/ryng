@@ -40,7 +40,13 @@ impl Plugin for InventoryUiPlugin {
             .add_systems(OnEnter(GameState::Game), ui::spawn_inventory_ui)
             .add_systems(
                 Update,
-                (ui::slot_click_system, ui::update_inventory_ui).run_if(in_state(GameState::Game)),
+                // The editor takes the pointer, so slot clicks stand down with
+                // the rest of the gameplay handling.
+                (
+                    ui::slot_click_system.run_if(super::gameplay_active),
+                    ui::update_inventory_ui,
+                )
+                    .run_if(in_state(GameState::Game)),
             );
     }
 }

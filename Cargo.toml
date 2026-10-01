@@ -11,6 +11,14 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 bevy = { version = "0.19.1", features = ["android-game-activity", "mp3"] }
+# Only for the `hotspot-editor` feature. Optional so an ordinary build pulls in
+# neither it nor its X11 dependency.
+arboard = { version = "3.6", optional = true }
+
+[features]
+# `cargo run --features hotspot-editor` adds the in-game hotspot overlay. The
+# module is compiled out entirely without this, so it cannot reach a release.
+hotspot-editor = ["dep:arboard"]
 
 [profile.release]
 lto = "thin"
