@@ -88,10 +88,26 @@ fn q_and_e_change_both_sides_by_five() {
 #[test]
 fn resizing_one_axis_leaves_the_other_alone() {
     let start = Vec2::new(200.0, 100.0);
-    assert_eq!(resize(start, Some(0), 1.0), Vec2::new(205.0, 100.0), "width");
-    assert_eq!(resize(start, Some(0), -1.0), Vec2::new(195.0, 100.0), "width");
-    assert_eq!(resize(start, Some(1), 1.0), Vec2::new(200.0, 105.0), "height");
-    assert_eq!(resize(start, Some(1), -1.0), Vec2::new(200.0, 95.0), "height");
+    assert_eq!(
+        resize(start, Some(0), 1.0),
+        Vec2::new(205.0, 100.0),
+        "width"
+    );
+    assert_eq!(
+        resize(start, Some(0), -1.0),
+        Vec2::new(195.0, 100.0),
+        "width"
+    );
+    assert_eq!(
+        resize(start, Some(1), 1.0),
+        Vec2::new(200.0, 105.0),
+        "height"
+    );
+    assert_eq!(
+        resize(start, Some(1), -1.0),
+        Vec2::new(200.0, 95.0),
+        "height"
+    );
 }
 
 /// A negative rectangle would make a hotspot impossible to click.

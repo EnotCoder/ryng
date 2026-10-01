@@ -170,6 +170,31 @@ out entirely and it cannot reach a release build. With the feature on, the edito
 always wins the pointer, so clicks select instead of walking the player through
 the door.
 
+### Reading the line it gives you
+
+`hop!(tex/rooms/floor_2/room_2.png, 555.0, 5.0, Vec2::new(150.0, 610.0))` means a
+door leading to the floor 2 corridor, 15px right of where it was and 5px up, at
+150x610 instead of the default 200x300. The size is only printed when it differs
+from the default, so a line without one is not missing anything.
+
+Two things decide where the line goes:
+
+- **The target names the direction, not the room.** This one points *out of*
+  apartment 3, so it belongs in `apartment!(p::AP_3, ...)` in `table.rs`. A line
+  pointing at `ap_3.png` would instead belong to the corridor's row.
+- **Which numbers you paste matters.** The builders take arguments positionally.
+  `apartment!` is `path, title, exit, exit_x, exit_y, exit_size, teddy_x, teddy_y,
+  tool, tool_x, tool_y` — so `exit_x, exit_y, exit_size` are three consecutive
+  slots, and a size pasted into the teddy's slot compiles, runs, and quietly
+  moves the teddy instead of resizing the door. `cargo test` checks every
+  apartment's teddy spot is inside the frame and will name the room for you.
+
+Coordinates are `x` from the left edge of the picture and `y` down from the top,
+in pixels of the 1280x720 art, because the camera is `FixedVertical` at 720. In
+the editor's own coordinate system positive `y` is up, so the same spot reads as
+`y = -200` in a test and `y = 200` off the picture — the readout prints the
+picture convention, the internals use the other one.
+
 ## License
 
 MIT

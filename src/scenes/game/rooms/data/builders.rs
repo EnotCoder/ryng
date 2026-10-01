@@ -172,9 +172,15 @@ pub(crate) use locked;
 
 /// A floor 2 apartment: a way out, a tool lying on the floor, and somewhere to
 /// leave or retrieve the teddy.
+///
+/// The exit takes a size like `hop!` does, because the door in each apartment
+/// sits in a different place on its picture and one rectangle does not fit all
+/// three. Note the size comes straight after `$exit_y`, not after the teddy's
+/// spot: the argument list is positional, and a size dropped into the wrong slot
+/// silently moves the teddy instead of resizing the door.
 macro_rules! apartment {
     (
-        $path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr,
+        $path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr, $exit_size:expr,
         $rest_x:expr, $rest_y:expr,
         $tool:expr, $tool_x:expr, $tool_y:expr
     ) => {
@@ -185,11 +191,30 @@ macro_rules! apartment {
             TransitionSound::NextRoom,
             Music::Indoors,
             &[
-                hop!($exit, $exit_x, $exit_y),
+                hop!($exit, $exit_x, $exit_y, $exit_size),
                 drop!(Item::Teddy, $rest_x, $rest_y),
                 take!(Item::Teddy, $rest_x, $rest_y),
                 take!($tool, $tool_x, $tool_y)
             ]
+        )
+    };
+    (
+        $path:expr, $title:expr, $exit:expr, $exit_x:expr, $exit_y:expr,
+        $rest_x:expr, $rest_y:expr,
+        $tool:expr, $tool_x:expr, $tool_y:expr
+    ) => {
+        apartment!(
+            $path,
+            $title,
+            $exit,
+            $exit_x,
+            $exit_y,
+            HOTSPOT_SIZE,
+            $rest_x,
+            $rest_y,
+            $tool,
+            $tool_x,
+            $tool_y
         )
     };
 }
