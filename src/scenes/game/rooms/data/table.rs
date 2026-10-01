@@ -192,8 +192,8 @@ pub(super) static ROOMS: &[RoomDef] = &[
         TransitionSound::NextRoom,
         Music::Indoors,
         &[
-            hop!(p::F2_HALL, 0.0, -250.0),
-            hop!(p::AP_3, -500.0, 0.0),
+            hop!(p::F2_HALL, 0.0, -270.0, Vec2::new(200.0, 100.0)),
+            hop!(p::AP_3, -500.0, 0.0, Vec2::new(200.0, 500.0)),
             locked!(
                 p::STAIRS_1,
                 0.0,

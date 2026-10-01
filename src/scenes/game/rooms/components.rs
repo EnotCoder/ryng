@@ -17,6 +17,12 @@ pub struct Hotspot;
 #[derive(Component)]
 pub struct HotspotIcon;
 
+/// The size the blinking arrow is drawn at, whatever the hotspot underneath it
+/// happens to be. It used to be derived from the hotspot rectangle, which made
+/// the arrow grow with every door that was resized and gave it a different size
+/// on the item spots than on the doors.
+pub const HOTSPOT_ICON_SIZE: Vec2 = Vec2::splat(10.0);
+
 #[derive(Component)]
 pub struct Room;
 

@@ -18,12 +18,19 @@ pub(crate) const HOTSPOT_SIZE: Vec2 = Vec2::new(200.0, 300.0);
 pub(crate) const ITEM_HOTSPOT_SIZE: Vec2 = Vec2::new(140.0, 140.0);
 
 /// A hotspot leading to `target`.
+///
+/// The size defaults to a door-sized rectangle; pass one to override it, which
+/// is what a hotspot low on the picture needs so it does not run off the bottom
+/// of the room.
 macro_rules! hop {
     ($target:expr, $x:expr, $y:expr) => {
+        hop!($target, $x, $y, HOTSPOT_SIZE)
+    };
+    ($target:expr, $x:expr, $y:expr, $size:expr) => {
         HotspotDef {
             action: HotspotAction::GoToRoom($target),
             pos: Vec2::new($x, $y),
-            size: HOTSPOT_SIZE,
+            size: $size,
             gate: None,
             require: &[],
         }
