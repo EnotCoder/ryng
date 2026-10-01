@@ -12,6 +12,7 @@ use bevy::prelude::*;
 
 use crate::acts::{Inventory, Item};
 use crate::scenes::game::rooms::components::HotspotAction;
+use crate::scenes::game::rooms::data::RoomDef;
 
 #[cfg(test)]
 mod tests;
@@ -138,6 +139,20 @@ pub fn spot_is_live(world: &WorldItems, here: &str, action: &HotspotAction) -> b
         // Doors are part of the room and are never hidden.
         HotspotAction::GoToRoom(_) => true,
     }
+}
+
+/// Where an item is drawn in a room: the position of that room's own pickup
+/// hotspot for the item.
+///
+/// Reading the position back out of the table rather than keeping a second list
+/// of coordinates is what stops the sprite and the clickable area from drifting
+/// apart - there is only ever one number to edit.
+pub fn item_position(def: &RoomDef, item: Item) -> Option<Vec2> {
+    def.variants[0]
+        .hotspots
+        .iter()
+        .find(|hotspot| matches!(hotspot.action, HotspotAction::Take(which) if which == item))
+        .map(|hotspot| hotspot.pos)
 }
 
 /// Whether the inventory holds every one of `needed`.

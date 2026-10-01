@@ -11,7 +11,8 @@ use crate::acts::{Inventory, Item};
 use crate::scenes::game::rooms::components::HotspotAction;
 
 use super::{
-    WorldItems, first_free_slot, holds_all, should_show_in, spot_is_live, try_drop, try_take,
+    WorldItems, first_free_slot, holds_all, item_position, should_show_in, spot_is_live, try_drop,
+    try_take,
 };
 
 const BASEMENT: &str = "tex/rooms/basement/basement_stairs_center_room.png";
@@ -437,6 +438,63 @@ fn an_empty_requirement_is_always_satisfied() {
     let empty: &[Item] = &[];
     assert!(holds_all(&full(), empty));
     assert!(holds_all(&Inventory(vec![None; 4]), empty));
+}
+
+/// The sprite of a resting item is drawn at the position of that room's own
+/// pickup hotspot, so the two can never drift apart. What this pins is the
+/// consequence: every room that offers a put-down spot must also offer a pickup
+/// spot for the same item, otherwise the item could be left somewhere its sprite
+/// has no position to be drawn at.
+///
+/// The teddy is the only droppable item, so it is the only one to check - but the
+/// check is written over the table rather than over the teddy, so a future
+/// droppable item is covered without editing this test.
+#[test]
+fn every_drop_spot_has_a_pickup_spot_to_draw_at() {
+    use crate::scenes::game::rooms::components::HotspotAction;
+    use crate::scenes::game::rooms::data::{all_paths, room_def};
+
+    let mut checked = 0;
+    for path in all_paths() {
+        let def = room_def(path, crate::acts::ActId::ActThree);
+        let droppable: Vec<Item> = def
+            .variants
+            .iter()
+            .flat_map(|variant| variant.hotspots.iter())
+            .filter_map(|hotspot| match hotspot.action {
+                HotspotAction::Drop(item) => Some(item),
+                _ => None,
+            })
+            .collect();
+        for item in droppable {
+            assert!(
+                item_position(&def, item).is_some(),
+                "{} offers a drop spot for {item:?} but no pickup spot, so its \
+                 sprite would have nowhere to be drawn",
+                def.variants[0].path,
+            );
+            checked += 1;
+        }
+    }
+    assert!(
+        checked > 0,
+        "no drop spots found at all, the check is vacuous"
+    );
+}
+
+/// Every item that starts in the world has a pickup hotspot in the room it
+/// starts in, for the same reason.
+#[test]
+fn every_starting_item_has_a_spot_to_be_drawn_at() {
+    use crate::scenes::game::rooms::data::room_def;
+
+    for (item, room) in start().iter() {
+        let def = room_def(room, crate::acts::ActId::ActThree);
+        assert!(
+            item_position(&def, item).is_some(),
+            "{item:?} starts in {room} with no pickup hotspot to draw it at",
+        );
+    }
 }
 
 /// The three tools are distinct and are not any of the items the player already

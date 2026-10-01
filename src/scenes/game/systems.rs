@@ -7,8 +7,8 @@ use crate::buttons;
 use crate::scenes::fade::{FADE_DURATION, FadePhase, RoomFade};
 use crate::scenes::game::inventory::ActiveInvSlot;
 use crate::scenes::game::items::{
-    ITEM_SIZE, ItemHotspot, ItemSprite, WorldItems, act, holds_all, should_show_in, spot_is_live,
-    try_drop, try_take,
+    ITEM_SIZE, ItemHotspot, ItemSprite, WorldItems, act, holds_all, item_position, should_show_in,
+    spot_is_live, try_drop, try_take,
 };
 use crate::scenes::game::rooms::components::{
     Hotspot, HotspotAction, HotspotDef, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle,
@@ -226,38 +226,6 @@ pub fn item_hotspot_visibility_system(
     }
 }
 
-/// Where each item lies in a room, in the same 1:1 space as the room art. The
-/// teddy is in the basement and the tools are in the apartments. An item the
-/// player puts down reuses the spot it was last resting at.
-pub fn rest_position(item: Item, room: &str) -> Option<Vec2> {
-    const TABLE: &[(Item, &str, Vec2)] = &[
-        (
-            Item::Teddy,
-            "tex/rooms/basement/basement_stairs_center_room.png",
-            Vec2::new(60.0, -210.0),
-        ),
-        (
-            Item::Crowbar,
-            "tex/rooms/floor_2/ap_1.png",
-            Vec2::new(200.0, -200.0),
-        ),
-        (
-            Item::MetalCutters,
-            "tex/rooms/floor_2/ap_2.png",
-            Vec2::new(-230.0, -190.0),
-        ),
-        (
-            Item::KeyDoor2,
-            "tex/rooms/floor_2/ap_3.png",
-            Vec2::new(250.0, -200.0),
-        ),
-    ];
-    TABLE
-        .iter()
-        .find(|(i, where_, _)| *i == item && *where_ == room)
-        .map(|(_, _, pos)| *pos)
-}
-
 /// Draws every item lying in the current room, and nothing in any other.
 ///
 /// The sprites are children of the room, so they ride along with the breathing
@@ -288,7 +256,7 @@ pub fn item_sprites_system(
         if resting_room != here || shown.contains(&item) {
             continue;
         }
-        let Some(pos) = rest_position(item, here) else {
+        let Some(pos) = item_position(&def, item) else {
             continue;
         };
         let handle: Handle<Image> = asset_server.load(item.icon_path());
