@@ -1,92 +1,168 @@
 # ryng
 
-A reaction-testing game prototype built with [Bevy](https://bevyengine.org) 0.19 and Rust 2024.
+A point-and-click narrative game built with [Bevy](https://bevyengine.org) 0.19 and
+Rust 2024. You walk a tired clerk home from work, the elevator drops you into the
+basement, and the way back up is not the way you came.
 
-## Screenshot / Scene
+Everything is a still picture of a room and a list of rectangles you can click. No
+character controllers, no physics — the whole game is rooms, hotspots, an
+inventory and a fade between them.
 
-The game takes place in a room rendered by `assets/room.png`. Click the target as fast as you can when it appears — the core reaction loop is the next step.
+## How to run
 
-## Features
+Needs [Rust](https://rustup.rs) and the system dependencies for Bevy (see the
+[Bevy setup guide](https://bevyengine.org/learn/quick-start/getting-started/setup/)).
 
-- **Main menu** with `Settings`, `Play`, and `Quit` buttons
-- Button hover/press **color animations** (release-to-click, same as Godot-style UI)
-- **Scene transitions** powered by Bevy `States`:
-  - `Menu` -> `Game` via `Play`
-  - `Game` -> `Menu` via `Back`
-  - `Quit` exits the application
-- Game scene with a scalable **sprite background** (`Transform.scale`, Godot-style)
-- Scene-scoped entities auto-despawned on exit (`DespawnOnExit`)
+```sh
+cargo run          # play
+cargo test         # unit tests
+cargo clippy --all-targets
+```
+
+## What's in it
+
+- **Four states**, wired with Bevy's `States`: `Loading` -> `Intro` -> `Menu` -> `Game`
+- **Intro**: the logo falls in, lands, and drops out on a fixed 4.8s curve
+- **Menu** with `Settings`, `Play` and `Quit`
+- **Settings** panel: volume slider and a vignette toggle, both generic over the
+  resource they edit, so a new setting is a type plus one line
+- **Rooms** declared as data, not code: 21 rows in one table, each with a picture,
+  a title, a story line, transition sound, music and its hotspots
+- **Four kinds of room**: interactive (`room!`), a beat that plays and moves on by
+  itself (`beat!` / `chapter!`), a carousel of two or more pictures the player
+  flips through (`carousel!`), and a repeated floor-2 apartment (`apartment!`)
+- **Hotspots**: `hop!` an ordinary door, `gated!` one that spends a single item,
+  `locked!` one that needs a set of items carried but not spent, `take!` / `drop!`
+  for items on the floor
+- **Inventory** of four slots with an active slot; doors that need an item only
+  open when it is the one selected
+- **Six items**, each with one icon path and one slot texture table entry
+- **Three acts**: *The Curse*, *The Descent*, *The Escape*. Act 3 is stubbed
+- Per-room music and transition sounds, cross-faded through a 0.35s fade overlay
+- **Camera** `FixedVertical` at `DESIGN_HEIGHT = 720`, so a room picture maps to
+  the frame one to one and every UI constant can be authored against 720
+- **Android** target under `mobile/`, built with `cargo-apk`
 
 ## Controls
 
-| Input          | Action                    |
-| -------------- | ------------------------- |
-| Left mouse     | Press / hover / release to click |
-| `Quit` button  | Exit the application      |
+| Input        | Action                                             |
+| ------------ | -------------------------------------------------- |
+| Left mouse   | Press / hover / release to click                  |
+| `Back`       | Return to the menu from a room                     |
+| `<` / `>`     | Flip between the pictures of a carousel room       |
+| Inventory    | Click a slot to make it the active one             |
+| `Quit`       | Exit from the menu                                 |
+
+There is no keyboard input in the game itself. The arrow keys you may reach for do
+nothing, and that is deliberate — the only keyboard bindings in the codebase belong
+to the hotspot editor below.
 
 ## Project structure
 
 ```
 src/
-├── main.rs      # App setup, camera, UI spawning, state wiring
-├── button.rs    # Button rendering + interaction systems (colors, clicks)
-└── state.rs     # GameState (Menu / Game)
+├── main.rs          # Thin entry point, calls into the lib
+├── lib.rs           # App wiring, camera, UiScale, DESIGN_HEIGHT/FRAME_HALF
+├── state.rs         # GameState: Loading / Intro / Menu / Game
+├── acts.rs          # Item, Inventory, ActId, Act
+├── buttons/         # Button spawning, hover/press colour states, click reader
+└── scenes/
+    ├── loading.rs   # Splash and the asset preload overlay
+    ├── intro/       # Logo fall curve
+    ├── menu/        # Menu buttons
+    ├── settings/    # Slider + checkbox widgets, volume and vignette resources
+    ├── fade.rs      # RoomFade state machine, drives transitions and act changes
+    ├── sound.rs     # Music / TransitionSound tables
+    └── game/
+        ├── mod.rs           # GamePlugin, gameplay_active()
+        ├── systems.rs       # Hotspot clicks, carousel, room breathing, icon blink
+        ├── ui.rs            # Back button, carousel arrows, title/story, preload
+        ├── items.rs         # World items, take/drop rules, item sprite syncing
+        ├── inventory/       # Inventory UI and active slot
+        ├── hotspot_edit.rs  # The editor, only with the feature on
+        └── rooms/
+            ├── components.rs  # Room, Hotspot, HotspotDef, RoomVariant
+            ├── spawn.rs       # Room and hotspot spawning
+            └── data/
+                ├── p.rs        # Asset paths, one constant per picture
+                ├── builders.rs # The room!/hop!/take! macro family
+                ├── table.rs    # The rows
+                └── data.rs     # Lookup by path, preload list
+
 assets/
-└── room.png     # Game scene background
+├── tex/
+│   ├── rooms/       # floor_1, floor_2, my_floor, basement, stairs
+│   └── ui/          # buttons, inventory slots and icons, room title plate
+└── sounds/          # Music loops and transition one-shots
+
+mobile/              # Gradle project for the Android build
 ```
 
-## How to run
+## The room table
 
-Make sure you have [Rust](https://rustup.rs) and system dependencies for Bevy installed
-(see the [Bevy setup guide](https://bevyengine.org/learn/quick-start/getting-started/setup/)).
+Adding a room is one row, not a function. `src/scenes/game/rooms/data.rs` looks a
+room up by the path of its first variant, so that path is the room's key; an asset
+path is a constant in `p.rs`. The preload list is derived from the same table, so
+it cannot drift out of sync with the rooms that exist.
 
-```sh
-cargo run
+```rust
+room!(
+    p::F2_CORRIDOR,
+    "Floor 2 - Corridor",
+    "",
+    TransitionSound::NextRoom,
+    Music::Indoors,
+    &[
+        hop!(p::F2_HALL, 0.0, -270.0, Vec2::new(200.0, 100.0)),
+        hop!(p::AP_3, -500.0, 0.0, Vec2::new(200.0, 500.0)),
+        locked!(p::STAIRS_1, 0.0, 0.0, Vec2::new(400.0, 400.0), &Item::DOOR_TOOLS)
+    ]
+),
 ```
+
+The builders are macros rather than `const fn`s on purpose: a `&[..]` can only be
+promoted to `'static` where the borrow is written syntactically, so expanding the
+macro at the `static` is what puts every literal into the constant initializer.
+
+`locked!` takes a slice so a set can be named at the use site —
+`Item::DOOR_TOOLS` is the three tools the black door on floor 2 wants, and none of
+them is spent, so the player can still walk back through afterwards.
 
 ## Hotspot editor
 
-Rooms and their interactive spots are declared in a table in
-`src/scenes/game/rooms/data.rs`, as one line per hotspot (`hop!`, `take!`,
-`drop!`, `locked!`, `gated!`). Getting those coordinates right by hand off the
-room art is tedious, so there is an overlay for it:
+Coordinates are `x` from the left edge and `y` down from the top, measured off the
+room picture. Getting them by hand is tedious, so there is an overlay:
 
 ```sh
 cargo run --features hotspot-editor
 ```
 
-It draws a faint rectangle over every hotspot in the current room, brighter over
-the selected one, with a readout along the bottom. It never writes to the source:
-it shows you the definition line and puts it on the clipboard, and you paste it.
+It draws a faint rectangle over every hotspot in the room, brighter over the
+selected one, with a readout along the bottom.
 
-| Input              | Action                                            |
-| ------------------ | ------------------------------------------------- |
-| Left click         | Select a hotspot                                  |
-| Arrow keys         | Move it by 5px, 1px with Shift held               |
-| `Q` / `E`          | Shrink / grow by 5px                              |
-| `C`                | Copy the definition line for the current placement |
-| `Esc`              | Drop the selection                                |
-| `[` / `]`          | Previous / next room in the table                 |
-| `G`                | Jump to the first room of the current act         |
+| Input      | Action                                             |
+| ---------- | -------------------------------------------------- |
+| Left click | Select a hotspot                                   |
+| Arrows     | Move by 5px, 1px with Shift held                   |
+| `Q` / `E`  | Shrink / grow by 5px                               |
+| `C`        | Copy the definition line for the current placement  |
+| `Esc`      | Drop the selection                                 |
+| `[` / `]`  | Previous / next room in the table                  |
+| `G`        | Jump to the first room of the current act          |
 
-The readout names the room and act, the hotspot index, the definition line, and
-any other hotspot the selection overlaps — an overlap means the top one swallows
-the clicks meant for the one underneath, which is worth knowing while you place
-things rather than after.
+The readout names the room, the act, the hotspot index and the definition line,
+and lists any other hotspot the selection overlaps — an overlap means the top one
+swallows the clicks meant for the one underneath, which is better to find while
+placing things than after.
 
-Room art is 1280x720 and the camera is `FixedVertical`, so the numbers in the
-table map to the picture one to one: `x` is measured from the left edge and `y`
-down from the top.
+It never writes to the source. It shows you the line and puts it on the
+clipboard, and you paste it: a tool that edits your code while you hold the arrow
+keys is how you end up with a diff you cannot explain.
 
-The overlay is behind a Cargo feature, so `cargo run` compiles it out entirely
-and it cannot reach a release build. With the feature on, the editor always wins
-the pointer, so clicks select instead of walking the player through the door.
-
-## Roadmap
-
-- Reaction round loop: `Idle -> Waiting -> Ready`
-- Reaction-time measurement and last/best time display
-- Settings scene
+The overlay is behind a Cargo feature, so a plain `cargo run` compiles the module
+out entirely and it cannot reach a release build. With the feature on, the editor
+always wins the pointer, so clicks select instead of walking the player through
+the door.
 
 ## License
 
