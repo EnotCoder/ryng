@@ -86,8 +86,12 @@ src/
             └── data/
                 ├── p.rs        # Asset paths, one constant per picture
                 ├── builders.rs # The room!/hop!/take! macro family
-                ├── table.rs    # The rows
-                └── data.rs     # Lookup by path, preload list
+                ├── data.rs     # Lookup by path, preload list, rooms()
+                └── table/
+                    ├── mod.rs      # ACTS: the acts, in play order, plus UNKNOWN
+                    ├── act_one.rs  # Street, concierge, hall, the lift
+                    ├── act_two.rs  # The basement and the way back up
+                    └── act_three.rs# Floor 2 and the three apartments
 
 assets/
 ├── tex/
@@ -127,6 +131,35 @@ macro at the `static` is what puts every literal into the constant initializer.
 `locked!` takes a slice so a set can be named at the use site —
 `Item::DOOR_TOOLS` is the three tools the black door on floor 2 wants, and none of
 them is spent, so the player can still walk back through afterwards.
+
+### One file per act
+
+The rows are split across `table/act_one.rs`, `act_two.rs` and `act_three.rs`, and
+`table/mod.rs` lists them in `ACTS` as the single statement of play order. That
+order is load-bearing: the hotspot editor steps through rooms with `[` and `]`
+and prints "room 7/21", so moving a row between files renumbers the editor even
+though the game plays identically. `data::tests` pins the whole route to catch
+that.
+
+A room belongs to the act that is current *while the player stands in it*, and the
+act changes on entry to the room carrying `next_act` — so that room is the first
+row of the next act's file:
+
+| Act | Opens at | Carries `next_act` |
+| --- | --- | --- |
+| 1 The Curse | the street outside home | — |
+| 2 The Descent | the basement hall | `ActTwo` |
+| 3 The Escape | the floor 2 hall | `ActThree` |
+
+Two placements that look wrong until you trace the route, both commented in place:
+the elevator beat is act 1 (the fall ends the ride the player started in act 1),
+and `STAIRS_1`/`STAIRS_2` are act 2 (the player reaches them from the basement, and
+the floor 2 black door sends them back down through them).
+
+Adding an act is a new file with a `ROOMS`, one line in `ACTS`, and whatever
+`next_act` the last room of the previous act should carry. Nothing outside
+`table/` changes: everything else reads the rooms through `data::rooms()`, which
+flattens `ACTS`.
 
 ## Hotspot editor
 

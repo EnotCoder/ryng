@@ -8,8 +8,8 @@ use bevy::prelude::Vec2;
 use crate::acts::{ActId, default_act};
 use crate::scenes::game::rooms::components::HotspotAction;
 
-use super::table::ROOMS;
-use super::{RoomDef, all_paths, p, room_def};
+use super::table::ACTS;
+use super::{RoomDef, all_paths, p, room_def, rooms};
 
 /// Every way out of a room: each hotspot plus the auto-next hand-off.
 ///
@@ -31,12 +31,12 @@ fn key_of(room: &RoomDef) -> &'static str {
 }
 
 fn is_room(path: &str) -> bool {
-    ROOMS.iter().any(|room| key_of(room) == path)
+    rooms().any(|room| key_of(room) == path)
 }
 
 /// Every key in the table.
 fn keys() -> impl Iterator<Item = &'static str> {
-    ROOMS.iter().map(key_of)
+    rooms().map(key_of)
 }
 
 /// Rooms that are in the table but that nothing links to yet. Each one is work
@@ -61,11 +61,11 @@ const PARKED_ASSETS: &[&str] = &[
 /// silently hand back `UNKNOWN` and the player would land on a black screen.
 #[test]
 fn every_link_resolves() {
-    for room in ROOMS {
+    for room in rooms() {
         for target in edges_of(room) {
             assert!(
                 is_room(target),
-                "{} -> {target} is not a key in ROOMS",
+                "{} -> {target} is not a key in the table",
                 key_of(room),
             );
         }
@@ -76,7 +76,95 @@ fn every_link_resolves() {
 #[test]
 fn keys_are_unique() {
     let unique: HashSet<_> = keys().collect();
-    assert_eq!(unique.len(), ROOMS.len(), "two rows share a key");
+    let all: Vec<_> = rooms().collect();
+    assert_eq!(unique.len(), all.len(), "two rows share a key");
+}
+
+// ------------------------------------------------------- one file per act
+
+/// The table is split across act files, and `ACTS` is what stitches them back
+/// together. Nothing here checks that the split is *sensible*, only that it did
+/// not lose or reorder anything on the way.
+///
+/// The order is the substance: the hotspot editor steps rooms with `[` and `]`
+/// and prints "room 7/21", so moving a row between files silently renumbers the
+/// editor even when the game plays identically. Pinning the route here is what
+/// makes such a move a deliberate act rather than a diff nobody can explain.
+#[test]
+fn the_table_is_ordered_by_the_player_s_route() {
+    let route: Vec<&str> = keys().collect();
+    assert_eq!(
+        route,
+        vec![
+            // Act 1: street, concierge, hall, then the lift.
+            p::F1_STREET_1,
+            p::F1_STREET_2,
+            p::F1_CONCIERGE,
+            p::F1_CONCIERGE_DARK,
+            p::F1_HALL,
+            p::F1_HALL_DEAD,
+            p::ELEVATOR,
+            // Act 2: the basement, out to the courtyard, then up the stairs.
+            p::B_HALL,
+            p::B_CORRIDOR,
+            p::B_DEEP,
+            p::B_EXIT,
+            p::B_STREET_1,
+            p::B_STREET_2,
+            p::STAIRS_1,
+            p::STAIRS_2,
+            // Act 3: floor 2 and the three apartments.
+            p::F2_HALL,
+            p::F2_CORRIDOR,
+            p::AP_1,
+            p::AP_2,
+            p::AP_3,
+            // Parked.
+            p::MY_FLOOR,
+        ],
+    );
+}
+
+/// An act file that is declared but empty, or one that is never declared, both
+/// compile and both look fine. The count pins the split itself: three acts, and
+/// the total the rest of the tests iterate over.
+#[test]
+fn the_table_is_split_into_three_acts() {
+    assert_eq!(ACTS.len(), 3, "the act count changed");
+    let all: Vec<_> = rooms().collect();
+    assert_eq!(all.len(), 21, "a row went missing or arrived");
+}
+
+/// The act is a property of the room the player is standing in, so it changes on
+/// entry to the room that carries `next_act` - which makes that room the first row
+/// of the next act's file. Act 1 is the exception: it has nothing before it, so it
+/// opens at the game's starting room.
+///
+/// Getting the boundary wrong shows nothing in play - the game plays identically
+/// either way - and only misfiles an act-dependent lookup, which today means the
+/// concierge. So it has to be asserted rather than read off the file layout.
+#[test]
+fn each_act_starts_at_the_room_that_changes_into_it() {
+    let starts = [default_act().start_room, p::B_HALL, p::F2_HALL];
+    for (act, start) in ACTS.iter().zip(starts) {
+        let keys: Vec<&str> = act.iter().map(|def| key_of(def)).collect();
+        assert_eq!(
+            keys.first().copied(),
+            Some(start),
+            "act does not begin at the room that carries next_act"
+        );
+    }
+
+    // And those rooms really do carry the change, or the boundaries above are a
+    // guess. Act 1 has no such room: it is the act the game starts in.
+    assert_eq!(
+        room_def(p::B_HALL, ActId::ActOne).next_act,
+        Some(ActId::ActTwo)
+    );
+    assert_eq!(
+        room_def(p::F2_HALL, ActId::ActTwo).next_act,
+        Some(ActId::ActThree),
+    );
 }
 
 /// Every picture the table names has to exist, or the room spawns as a blank
@@ -213,10 +301,7 @@ fn apartment_spots(room: &RoomDef) -> Vec<(&HotspotAction, Vec2, Vec2)> {
 }
 
 fn apartment_named(key: &'static str) -> &'static RoomDef {
-    ROOMS
-        .iter()
-        .find(|room| key_of(room) == key)
-        .expect("a row")
+    rooms().find(|room| key_of(room) == key).expect("a row")
 }
 
 /// `apartment!` takes its arguments positionally, and the teddy's spot sits right

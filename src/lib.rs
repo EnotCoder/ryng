@@ -9,7 +9,7 @@ pub mod state;
 
 use state::GameState;
 
-pub const DEBUG_SHOW_HOTSPOTS: bool = true;
+pub const DEBUG_SHOW_HOTSPOTS: bool = false;
 
 /// Whether the hotspot editor is running.
 ///

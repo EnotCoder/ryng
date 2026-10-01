@@ -1,13 +1,18 @@
 //! Room table: one static row per room, looked up by asset path.
 //!
-//! Adding a room = one row in [`table`]. Adding an asset = one constant in
-//! [`p`]. `all_paths` is derived from the table, so the preload list can no
-//! longer drift out of sync with the rooms that actually exist.
+//! Adding a room = one row in the act file it belongs to. Adding an asset = one
+//! constant in [`p`]. `all_paths` is derived from the table, so the preload list
+//! can no longer drift out of sync with the rooms that actually exist.
+//!
+//! The rows live one file per act under [`table`], and `ACTS` there lists the
+//! acts in play order. Everything in this module reads the rooms through
+//! [`rooms`] rather than through a single flat slice, so adding an act file is the
+//! only thing needed to grow the game.
 //!
 //! Layout:
 //! - [`p`] - asset paths
 //! - [`builders`] - the `room!` / `hop!` family that writes the rows
-//! - [`table`] - the rows themselves
+//! - [`table`] - the rows themselves, one file per act
 //! - `tests` - module tests, `#[cfg(test)]` only
 
 use bevy::prelude::*;
@@ -23,7 +28,16 @@ mod table;
 #[cfg(test)]
 mod tests;
 
-use table::{ROOMS, UNKNOWN};
+use table::{ACTS, UNKNOWN};
+
+/// Every room in the table, acts in play order.
+///
+/// The table is a list of lists so each act can be its own file; this is the one
+/// place that flattens it. The order is the player's route, which the hotspot
+/// editor's room stepping depends on, so it is the `ACTS` order in [`table`].
+pub(crate) fn rooms() -> impl Iterator<Item = &'static RoomDef> {
+    ACTS.iter().flat_map(|act| act.iter())
+}
 
 #[derive(Component, Clone, Copy)]
 pub(crate) struct RoomDef {
@@ -44,8 +58,7 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
     } else {
         path
     };
-    ROOMS
-        .iter()
+    rooms()
         .find(|room| room.variants[0].path == key)
         .copied()
         .unwrap_or(UNKNOWN)
@@ -64,7 +77,7 @@ pub(crate) fn door_size_default() -> Vec2 {
 /// no row of its own and would look up as `UNKNOWN`, so those are not listed.
 #[cfg(feature = "hotspot-editor")]
 pub(crate) fn room_keys() -> impl Iterator<Item = &'static str> {
-    ROOMS.iter().map(|def| def.variants[0].path)
+    rooms().map(|def| def.variants[0].path)
 }
 
 /// `room_keys` as an indexable list, for stepping through rooms.
@@ -75,8 +88,7 @@ pub(crate) fn room_key_list() -> Vec<&'static str> {
 
 /// Every picture the game needs, for the loading overlay.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
-    ROOMS
-        .iter()
+    rooms()
         .flat_map(|room| room.variants.iter())
         .map(|variant| variant.path)
 }
