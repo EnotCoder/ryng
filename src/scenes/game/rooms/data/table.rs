@@ -154,7 +154,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "",
         TransitionSound::NextRoom,
         Music::Indoors,
-        &[hop!(p::STAIRS_2, 0.0, 0.0)]
+        &[hop!(p::STAIRS_2, 50.0, 0.0)]
     ),
     room!(
         p::STAIRS_2,
@@ -162,7 +162,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "",
         TransitionSound::NextRoom,
         Music::Indoors,
-        &[hop!(p::F2_HALL, 0.0, 0.0)]
+        &[hop!(p::F2_HALL, 50.0, 0.0)]
     ),
     // -- Floor 2 ------------------------------------------------------------
     RoomDef {
@@ -175,9 +175,9 @@ pub(super) static ROOMS: &[RoomDef] = &[
             "Floor 2",
             "",
             &[
-                hop!(p::F2_CORRIDOR, 0.0, 0.0),
-                hop!(p::AP_1, -250.0, 0.0),
-                hop!(p::AP_2, 250.0, 0.0)
+                hop!(p::F2_CORRIDOR, -10.0, 20.0, Vec2::new(100.0, 150.0)),
+                hop!(p::AP_1, -285.0, 0.0, Vec2::new(100.0, 400.0)),
+                hop!(p::AP_2, 500.0, 0.0, Vec2::new(200.0, 700.0))
             ]
         )],
         next_act: Some(ActId::ActThree),
