@@ -189,11 +189,11 @@ Two things decide where the line goes:
   moves the teddy instead of resizing the door. `cargo test` checks every
   apartment's teddy spot is inside the frame and will name the room for you.
 
-Coordinates are `x` from the left edge of the picture and `y` down from the top,
-in pixels of the 1280x720 art, because the camera is `FixedVertical` at 720. In
-the editor's own coordinate system positive `y` is up, so the same spot reads as
-`y = -200` in a test and `y = 200` off the picture — the readout prints the
-picture convention, the internals use the other one.
+Coordinates are `x` from the left edge of the picture and `y` from the top, in
+pixels of the 1280x720 art, because the camera is `FixedVertical` at 720. The
+world coordinates the engine works in are the same numbers with `y` flipped —
+positive `y` is up, so the table's `y = -210` is 210px *down* the picture. The
+editor prints picture convention, since that is what you measure off the art.
 
 ## License
 
