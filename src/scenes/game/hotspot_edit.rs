@@ -1,7 +1,8 @@
 //! In-game overlay for placing hotspots.
 //!
 //! Enabled by `cargo run --features hotspot-editor`. Click a hotspot to select
-//! it, nudge it with the arrow keys, and copy the updated definition line to the
+//! it, nudge it with the arrow keys, resize it with `Q`/`E` or one axis at a
+//! time with `A`/`D` and `W`/`S`, and copy the updated definition line to the
 //! clipboard. `[` and `]` step through the rooms, `G` returns to the start of the
 //! current act.
 //!
@@ -103,11 +104,19 @@ pub fn nudge(pos: Vec2, axis: usize, sign: f32, fine: bool) -> Vec2 {
 }
 
 /// Grow or shrink a hotspot. Never negative, which would make it unpickable.
-pub fn resize(size: Vec2, sign: f32) -> Vec2 {
-    Vec2::new(
-        (size.x + sign * RESIZE).max(0.0),
-        (size.y + sign * RESIZE).max(0.0),
-    )
+///
+/// `axis` picks one side or both: a door frame is wide and short, and getting
+/// there by growing both axes in step means the width has to be walked back down
+/// one five-pixel step at a time.
+pub fn resize(size: Vec2, axis: Option<usize>, sign: f32) -> Vec2 {
+    match axis {
+        Some(0) => Vec2::new((size.x + sign * RESIZE).max(0.0), size.y),
+        Some(1) => Vec2::new(size.x, (size.y + sign * RESIZE).max(0.0)),
+        _ => Vec2::new(
+            (size.x + sign * RESIZE).max(0.0),
+            (size.y + sign * RESIZE).max(0.0),
+        ),
+    }
 }
 
 /// Whether two hotspot rectangles share any area. Touching edges do not count.
@@ -224,9 +233,19 @@ pub fn keyboard(
             changed = true;
         }
     }
-    for (key, sign) in [(KeyCode::KeyQ, -1.0), (KeyCode::KeyE, 1.0)] {
+    // `Q`/`E` still move both axes; `W`/`S` and `A`/`D` take one side each, which
+    // is what a door frame needs. `W`/`S` are the height and `A`/`D` the width, so
+    // the two pairs line up with the arrow keys.
+    for (key, axis, sign) in [
+        (KeyCode::KeyQ, None, -1.0),
+        (KeyCode::KeyE, None, 1.0),
+        (KeyCode::KeyW, Some(1usize), 1.0),
+        (KeyCode::KeyS, Some(1), -1.0),
+        (KeyCode::KeyA, Some(0usize), -1.0),
+        (KeyCode::KeyD, Some(0), 1.0),
+    ] {
         if keys.just_pressed(key) {
-            edit.size = resize(edit.size, sign);
+            edit.size = resize(edit.size, axis, sign);
             changed = true;
         }
     }
@@ -422,7 +441,7 @@ pub fn readout_text(
             };
             format!("#{index}  {}{clash}   [C copies]", edit.line)
         }
-        _ => "click a hotspot   arrows move (shift = 1px)   Q/E size   C copy   [ ] rooms   G act start"
+        _ => "click a hotspot   arrows move (shift = 1px)   Q/E size   A/D width   W/S height   C copy   [ ] rooms   G act start"
             .to_string(),
     };
     text.0 = format!("{head}\n{body}");

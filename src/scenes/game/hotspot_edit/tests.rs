@@ -5,7 +5,9 @@
 
 use bevy::prelude::*;
 
-use super::{describe, index_of_room, nudge, overlaps, pixel_to_world, resize, world_to_pixel};
+use super::{
+    RESIZE, describe, index_of_room, nudge, overlaps, pixel_to_world, resize, world_to_pixel,
+};
 use crate::acts::Item;
 use crate::scenes::game::rooms::components::{HotspotAction, HotspotDef};
 use crate::scenes::game::rooms::data::door_size_default;
@@ -74,10 +76,22 @@ fn nudging_is_reversible_inside_the_frame() {
 // -------------------------------------------------------------------- resize
 
 #[test]
-fn q_and_e_change_the_size_by_five() {
+fn q_and_e_change_both_sides_by_five() {
     let start = Vec2::new(200.0, 300.0);
-    assert_eq!(resize(start, 1.0), Vec2::new(205.0, 305.0));
-    assert_eq!(resize(start, -1.0), Vec2::new(195.0, 295.0));
+    assert_eq!(resize(start, None, 1.0), Vec2::new(205.0, 305.0));
+    assert_eq!(resize(start, None, -1.0), Vec2::new(195.0, 295.0));
+}
+
+/// A door frame is wide and short. Growing both axes together and then walking
+/// the width back down five pixels at a time is the tedium this axis split exists
+/// to remove, so the untouched side has to come back exactly unchanged.
+#[test]
+fn resizing_one_axis_leaves_the_other_alone() {
+    let start = Vec2::new(200.0, 100.0);
+    assert_eq!(resize(start, Some(0), 1.0), Vec2::new(205.0, 100.0), "width");
+    assert_eq!(resize(start, Some(0), -1.0), Vec2::new(195.0, 100.0), "width");
+    assert_eq!(resize(start, Some(1), 1.0), Vec2::new(200.0, 105.0), "height");
+    assert_eq!(resize(start, Some(1), -1.0), Vec2::new(200.0, 95.0), "height");
 }
 
 /// A negative rectangle would make a hotspot impossible to click.
@@ -85,9 +99,41 @@ fn q_and_e_change_the_size_by_five() {
 fn resizing_never_goes_negative() {
     let mut size = Vec2::new(10.0, 10.0);
     for _ in 0..10 {
-        size = resize(size, -1.0);
+        size = resize(size, None, -1.0);
     }
     assert_eq!(size, Vec2::ZERO);
+}
+
+/// The clamp has to hold per axis too, and it must not drag the other axis down
+/// with it - a zero width with the height intact is still a clickable sliver.
+#[test]
+fn one_axis_hitting_zero_does_not_take_the_other_with_it() {
+    let mut size = Vec2::new(5.0, 100.0);
+    for _ in 0..5 {
+        size = resize(size, Some(0), -1.0);
+    }
+    assert_eq!(size, Vec2::new(0.0, 100.0));
+
+    let mut size = Vec2::new(100.0, 5.0);
+    for _ in 0..5 {
+        size = resize(size, Some(1), -1.0);
+    }
+    assert_eq!(size, Vec2::new(100.0, 0.0));
+}
+
+/// One axis has to be enough to reach a wide door from the default rectangle, and
+/// it has to land on the size written down in the table.
+#[test]
+fn widening_one_axis_reaches_a_wide_door() {
+    let start = door_size_default();
+    let wide = Vec2::new(400.0, start.y);
+    let steps = (wide.x - start.x) / RESIZE;
+    let mut size = start;
+    for _ in 0..steps as i32 {
+        size = resize(size, Some(0), 1.0);
+    }
+    assert_eq!(size.x, wide.x);
+    assert_eq!(size.y, start.y, "the height moved while widening");
 }
 
 // ------------------------------------------------------------------ overlaps

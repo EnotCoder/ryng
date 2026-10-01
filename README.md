@@ -144,11 +144,17 @@ selected one, with a readout along the bottom.
 | ---------- | -------------------------------------------------- |
 | Left click | Select a hotspot                                   |
 | Arrows     | Move by 5px, 1px with Shift held                   |
-| `Q` / `E`  | Shrink / grow by 5px                               |
+| `Q` / `E`  | Shrink / grow by 5px on both axes                  |
+| `A` / `D`  | Width only                                         |
+| `W` / `S`  | Height only                                        |
 | `C`        | Copy the definition line for the current placement  |
 | `Esc`      | Drop the selection                                 |
 | `[` / `]`  | Previous / next room in the table                  |
 | `G`        | Jump to the first room of the current act          |
+
+The per-axis keys are the ones you want: a door frame is wide and short, and
+reaching that from the default rectangle by growing both sides in step means
+walking the width back down five pixels at a time.
 
 The readout names the room, the act, the hotspot index and the definition line,
 and lists any other hotspot the selection overlaps — an overlap means the top one
