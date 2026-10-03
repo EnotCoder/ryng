@@ -4,22 +4,20 @@ use bevy::ui::FocusPolicy;
 use crate::UiScale;
 use crate::buttons;
 use crate::scenes::settings::systems::{
-    Checkbox, SettingsPanel, SettingsPanelAction, SettingsPanelOpen, Slider, SliderFill,
-    SliderReadout, SliderThumb, SliderValue, SoundVolume, ToggleValue, VignetteSettings,
+    SettingsPanel, SettingsPanelAction, SettingsPanelOpen, Slider, SliderFill, SliderReadout,
+    SliderThumb, SliderValue, SoundVolume,
 };
 use crate::state::GameState;
 
 pub const TRACK_WIDTH: f32 = 220.0;
 pub const TRACK_HEIGHT: f32 = 16.0;
 pub const THUMB_SIZE: f32 = 26.0;
-pub const CHECKBOX_SIZE: f32 = 24.0;
 pub const ROW_GAP: f32 = 14.0;
 pub const LABEL_SIZE: f32 = 20.0;
 pub const TITLE_SIZE: f32 = 26.0;
 pub const READOUT_WIDTH: f32 = 64.0;
 
 pub const ACCENT_ON: Color = Color::srgb(0.95, 0.85, 0.35);
-pub const ACCENT_OFF: Color = Color::srgb(0.25, 0.25, 0.3);
 const LABEL_COLOR: Color = Color::WHITE;
 const TRACK_COLOR: Color = Color::srgb(0.2, 0.2, 0.24);
 
@@ -114,28 +112,6 @@ fn slider_row<R: SliderValue + 'static>(
     });
 }
 
-fn checkbox_row<T: ToggleValue + 'static>(
-    parent: &mut ChildSpawnerCommands<'_>,
-    label: &str,
-    s: &UiScale,
-) {
-    settings_row(parent, label, s, |row| {
-        row.spawn((
-            Checkbox::<T> {
-                marker: std::marker::PhantomData,
-            },
-            Button,
-            Interaction::default(),
-            BackgroundColor(ACCENT_ON),
-            Node {
-                width: s.px(CHECKBOX_SIZE),
-                height: s.px(CHECKBOX_SIZE),
-                ..default()
-            },
-        ));
-    });
-}
-
 pub fn spawn_settings_panel(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -189,7 +165,6 @@ pub fn spawn_settings_panel(
                         TextColor(LABEL_COLOR),
                     ));
                     slider_row::<SoundVolume>(panel, "Volume", &s);
-                    checkbox_row::<VignetteSettings>(panel, "Vignette", &s);
                     buttons::draw_button_with_red_texture(
                         panel,
                         "Close",

@@ -1,12 +1,8 @@
 use bevy::audio::{GlobalVolume, Volume};
 use bevy::ecs::component::Mutable;
-use bevy::post_process::effect_stack::Vignette;
 use bevy::prelude::*;
 
 use crate::scenes::menu::MenuAction;
-use crate::scenes::settings::ui::{ACCENT_OFF, ACCENT_ON};
-
-pub const VIGNETTE_ON_INTENSITY: f32 = 0.9;
 
 #[derive(Resource)]
 pub struct SoundVolume(pub f32);
@@ -14,17 +10,6 @@ pub struct SoundVolume(pub f32);
 impl Default for SoundVolume {
     fn default() -> Self {
         Self(1.0)
-    }
-}
-
-#[derive(Resource)]
-pub struct VignetteSettings {
-    pub enabled: bool,
-}
-
-impl Default for VignetteSettings {
-    fn default() -> Self {
-        Self { enabled: true }
     }
 }
 
@@ -88,26 +73,6 @@ pub struct SliderThumb;
 /// The percentage label beside the track.
 #[derive(Component)]
 pub struct SliderReadout;
-
-/// A bool value flipped by clicking.
-pub trait ToggleValue {
-    fn enabled(&self) -> bool;
-    fn toggle(&mut self);
-}
-
-impl ToggleValue for VignetteSettings {
-    fn enabled(&self) -> bool {
-        self.enabled
-    }
-    fn toggle(&mut self) {
-        self.enabled = !self.enabled;
-    }
-}
-
-#[derive(Component)]
-pub struct Checkbox<T: ToggleValue> {
-    pub marker: std::marker::PhantomData<fn() -> T>,
-}
 
 // ------------------------------------------------------------------ panel
 
@@ -216,55 +181,13 @@ pub fn slider_update_system<R: SettingResource + SliderValue>(
     }
 }
 
-// --------------------------------------------------------------- checkbox
-
-pub fn checkbox_click_system<T: SettingResource + ToggleValue>(
-    mut interactions: Query<(&Interaction, &Checkbox<T>), (Changed<Interaction>, With<Button>)>,
-    mut value: ResMut<T>,
-) {
-    for (interaction, _checkbox) in &mut interactions {
-        if *interaction == Interaction::Pressed {
-            value.toggle();
-        }
-    }
-}
-
-pub fn checkbox_update_system<T: SettingResource + ToggleValue>(
-    value: Res<T>,
-    mut boxes: Query<&mut BackgroundColor, With<Checkbox<T>>>,
-) {
-    if !value.is_changed() {
-        return;
-    }
-    let color = if value.enabled() {
-        ACCENT_ON
-    } else {
-        ACCENT_OFF
-    };
-    for mut checkbox in &mut boxes {
-        checkbox.0 = color;
-    }
-}
-
 // ------------------------------------------------------------------ apply
 
 pub fn apply_settings_system(
     volume: Res<SoundVolume>,
-    vignette: Res<VignetteSettings>,
     mut global_volume: ResMut<GlobalVolume>,
-    mut camera_vignettes: Query<&mut Vignette>,
 ) {
     if volume.is_changed() {
         global_volume.volume = Volume::Linear(volume.0.clamp(0.0, 1.0));
-    }
-    if vignette.is_changed() {
-        let intensity = if vignette.enabled {
-            VIGNETTE_ON_INTENSITY
-        } else {
-            0.0
-        };
-        for mut camera_vignette in &mut camera_vignettes {
-            camera_vignette.intensity = intensity;
-        }
     }
 }

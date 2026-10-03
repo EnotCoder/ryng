@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use super::systems::{SliderValue, SoundVolume, ToggleValue, VignetteSettings, fraction_from};
+use super::systems::{SliderValue, SoundVolume, fraction_from};
 
 /// A pointer hit arrives in normalized space, spanning -0.5..0.5, so the
 /// midpoint of the track is x = 0.
@@ -98,14 +98,4 @@ fn volume_readout_rounds_to_whole_percent() {
     assert_eq!(volume.readout(), "45%");
     volume.set_fraction(0.0);
     assert_eq!(volume.readout(), "0%");
-}
-
-#[test]
-fn the_vignette_toggles_both_ways() {
-    let mut vignette = VignetteSettings::default();
-    assert!(vignette.enabled, "on by default");
-    vignette.toggle();
-    assert!(!vignette.enabled);
-    vignette.toggle();
-    assert!(vignette.enabled, "toggling twice returns to the start");
 }

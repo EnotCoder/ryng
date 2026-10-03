@@ -24,8 +24,8 @@ cargo clippy --all-targets
 - **Four states**, wired with Bevy's `States`: `Loading` -> `Intro` -> `Menu` -> `Game`
 - **Intro**: the logo falls in, lands, and drops out on a fixed 4.8s curve
 - **Menu** with `Settings`, `Play` and `Quit`
-- **Settings** panel: volume slider and a vignette toggle, both generic over the
-  resource they edit, so a new setting is a type plus one line
+- **Settings** panel: a volume slider, generic over the resource it edits, so a new
+  setting is a type plus one line
 - **Rooms** declared as data, not code: 21 rows in one table, each with a picture,
   a title, a story line, transition sound, music and its hotspots
 - **Four kinds of room**: interactive (`room!`), a beat that plays and moves on by
@@ -70,7 +70,7 @@ src/
     ├── loading.rs   # Splash and the asset preload overlay
     ├── intro/       # Logo fall curve
     ├── menu/        # Menu buttons
-    ├── settings/    # Slider + checkbox widgets, volume and vignette resources
+    ├── settings/    # Slider widget and the volume resource
     ├── fade.rs      # RoomFade state machine, drives transitions and act changes
     ├── sound.rs     # Music / TransitionSound tables
     └── game/
