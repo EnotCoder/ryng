@@ -26,8 +26,8 @@ cargo clippy --all-targets
 - **Menu** with `Settings`, `Play` and `Quit`
 - **Settings** panel: a volume slider, generic over the resource it edits, so a new
   setting is a type plus one line
-- **Rooms** declared as data, not code: 21 rows in one table, each with a picture,
-  a title, a story line, transition sound, music and its hotspots
+- **Rooms** declared as data, not code: 21 rows split one file per act, each with a
+  picture, a title, a story line, transition sound, music and its hotspots
 - **Four kinds of room**: interactive (`room!`), a beat that plays and moves on by
   itself (`beat!` / `chapter!`), a carousel of two or more pictures the player
   flips through (`carousel!`), and a repeated floor-2 apartment (`apartment!`)
