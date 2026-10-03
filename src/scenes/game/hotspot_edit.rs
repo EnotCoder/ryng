@@ -31,6 +31,19 @@ const NUDGE_FINE: f32 = 1.0;
 /// How much `Q` and `E` change its size.
 const RESIZE: f32 = 5.0;
 
+/// Marker colours. Unselected is barely there on purpose: the point is to see the
+/// shape of the room, not to cover it.
+const MARKER_IDLE: Color = Color::srgba(0.2, 0.7, 1.0, 0.10);
+const MARKER_SELECTED: Color = Color::srgba(0.2, 1.0, 0.4, 0.35);
+
+/// Marker z, above the room picture and the blinking arrow (z 1) but below the
+/// hotspots themselves, which are picked at z 1 and must stay the top thing.
+const MARKER_Z: f32 = 1.5;
+
+/// Readout placement, in design space like the rest of the UI.
+const READOUT_MARGIN: f32 = 14.0;
+const READOUT_SIZE: f32 = 16.0;
+
 /// A faint rectangle over every hotspot, and a bright one over the selection.
 #[derive(Component)]
 pub struct Marker {
@@ -388,14 +401,14 @@ pub fn markers(
                 },
                 Sprite {
                     color: if is_selected {
-                        Color::srgba(0.2, 1.0, 0.4, 0.35)
+                        MARKER_SELECTED
                     } else {
-                        Color::srgba(0.2, 0.7, 1.0, 0.10)
+                        MARKER_IDLE
                     },
                     custom_size: Some(size),
                     ..default()
                 },
-                Transform::from_xyz(pos.x, pos.y, 1.5),
+                Transform::from_xyz(pos.x, pos.y, MARKER_Z),
                 Pickable::IGNORE,
             ));
         });
@@ -452,13 +465,13 @@ pub fn spawn_overlay(mut commands: Commands, ui_scale: Res<crate::UiScale>) {
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(14.0 * s),
-            bottom: Val::Px(14.0 * s),
+            left: Val::Px(READOUT_MARGIN * s),
+            bottom: Val::Px(READOUT_MARGIN * s),
             ..default()
         },
         Text::new(""),
         TextFont {
-            font_size: ui_scale.font(16.0),
+            font_size: ui_scale.font(READOUT_SIZE),
             ..default()
         },
         TextColor(Color::WHITE),

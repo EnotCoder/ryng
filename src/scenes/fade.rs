@@ -7,6 +7,10 @@ use bevy::prelude::*;
 
 pub const FADE_DURATION: f32 = 0.35;
 
+/// The overlay starts fully transparent, because it is spawned before the first
+/// fade and a solid black flash at the start of a room would be visible.
+const OVERLAY_CLEAR: Color = Color::srgba(0.0, 0.0, 0.0, 0.0);
+
 #[derive(Default)]
 pub enum FadePhase {
     #[default]
@@ -32,7 +36,7 @@ pub fn spawn_fade_overlay(commands: &mut Commands) {
             height: Val::Percent(100.0),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.0)),
+        BackgroundColor(OVERLAY_CLEAR),
         Pickable::IGNORE,
         FadeOverlay,
         DespawnOnExit(GameState::Game),

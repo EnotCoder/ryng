@@ -19,9 +19,22 @@ use crate::scenes::game::rooms::spawn::spawn_room_content;
 use crate::scenes::game::ui::{CarouselArrow, CarouselDir, GameAction};
 use crate::state::GameState;
 
+/// The room drifts up and down a few pixels so a still picture is not perfectly
+/// still. Amplitude is in design pixels; speed is a period in seconds, written as
+/// `TAU / seconds` so it reads as "one full breath every 3.2s".
 const BREATH_AMPLITUDE: f32 = 4.0;
-const BREATH_SPEED: f32 = std::f32::consts::TAU / 3.2;
-const ICON_BLINK_SPEED: f32 = std::f32::consts::TAU / 1.6;
+const BREATH_PERIOD: f32 = 3.2;
+const BREATH_SPEED: f32 = std::f32::consts::TAU / BREATH_PERIOD;
+
+/// The arrow over a clickable hotspot fades in and out. Half a cycle is 1.6s, and
+/// the alpha oscillates between fully transparent and fully opaque.
+const ICON_BLINK_PERIOD: f32 = 1.6;
+const ICON_BLINK_SPEED: f32 = std::f32::consts::TAU / ICON_BLINK_PERIOD;
+
+/// `sin` runs -1..1 and alpha runs 0..1, so the amplitude is half and the offset
+/// the other half.
+const ALPHA_AMPLITUDE: f32 = 0.5;
+const ALPHA_OFFSET: f32 = 0.5;
 
 pub fn idle_breathe_system(time: Res<Time>, mut rooms: Query<&mut Transform, With<Room>>) {
     let t = time.elapsed_secs() * BREATH_SPEED;
@@ -32,7 +45,8 @@ pub fn idle_breathe_system(time: Res<Time>, mut rooms: Query<&mut Transform, Wit
 }
 
 pub fn blink_hotspot_icons(time: Res<Time>, mut icons: Query<&mut Sprite, With<HotspotIcon>>) {
-    let alpha = 0.5 + 0.5 * (time.elapsed_secs() * ICON_BLINK_SPEED).sin();
+    let phase = (time.elapsed_secs() * ICON_BLINK_SPEED).sin();
+    let alpha = ALPHA_OFFSET + ALPHA_AMPLITUDE * phase;
     for mut icon in &mut icons {
         icon.color = Color::srgba(1.0, 1.0, 1.0, alpha);
     }

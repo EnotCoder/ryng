@@ -3,13 +3,24 @@ use bevy::prelude::*;
 use crate::state::GameState;
 
 pub const LOGO_SCALE: f32 = 3.0;
-const LOGO_HALF: f32 = 150.0 * LOGO_SCALE / 2.0;
-pub const LOGO_START_Y: f32 = crate::DESIGN_HEIGHT / 2.0 + LOGO_HALF + 50.0;
+
+/// The logo art is 150px square at 1:1, scaled by `LOGO_SCALE`; the fall starts
+/// and ends just clear of the frame so the logo enters from off-screen.
+const LOGO_ART_SIZE: f32 = 150.0;
+const LOGO_HALF: f32 = LOGO_ART_SIZE * LOGO_SCALE / 2.0;
+const LOGO_CLEARANCE: f32 = 50.0;
+pub const LOGO_START_Y: f32 = crate::DESIGN_HEIGHT / 2.0 + LOGO_HALF + LOGO_CLEARANCE;
 pub const LOGO_LAND_Y: f32 = 0.0;
-pub const LOGO_EXIT_Y: f32 = -(crate::DESIGN_HEIGHT / 2.0 + LOGO_HALF + 50.0);
+pub const LOGO_EXIT_Y: f32 = -(crate::DESIGN_HEIGHT / 2.0 + LOGO_HALF + LOGO_CLEARANCE);
+
+// The curve has three phases, in seconds from the start: hang above the frame
+// while the splash clears, fall to centre, hold, then drop out of the bottom.
 pub const FALL_START: f32 = 0.2;
 pub const FALL_END: f32 = 1.0;
 pub const HOLD_END: f32 = 2.0;
+
+/// When the music ends, so the two are cut together. The intro song is 4.776s
+/// long; changing one without the other leaves silence or a truncated note.
 pub const INTRO_TOTAL: f32 = 4.776;
 
 #[derive(Component)]

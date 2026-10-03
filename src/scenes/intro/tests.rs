@@ -123,3 +123,30 @@ fn the_segments_hand_over_without_a_jump() {
         );
     }
 }
+
+/// `INTRO_TOTAL` is the length of `intro.mp3`, and the state change to the menu
+/// is scheduled from it. The phases are written against the music, so a boundary
+/// landing past the end means the logo is cut off mid-segment when the song stops
+/// - silent, and easy to miss in review.
+#[test]
+fn no_phase_ends_after_the_intro_is_over() {
+    for (name, boundary) in [("fall", FALL_START), ("land", FALL_END), ("hold", HOLD_END)] {
+        assert!(
+            boundary < INTRO_TOTAL,
+            "the {name} phase ends at {boundary}, after INTRO_TOTAL={INTRO_TOTAL}"
+        );
+    }
+}
+
+/// The exit sweep runs from the hold to the end, and the logo must still be on
+/// screen partway through it. If the sweep finished early, the tail of the curve
+/// would be dead time and the logo would sit off screen while the music plays out.
+#[test]
+fn the_logo_is_still_on_screen_halfway_through_the_exit() {
+    let sweep = INTRO_TOTAL - HOLD_END;
+    let (y, _) = intro_position(HOLD_END + sweep / 2.0);
+    assert!(
+        y > LOGO_EXIT_Y,
+        "the logo left the frame before the intro ended: y={y}"
+    );
+}

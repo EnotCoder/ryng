@@ -8,6 +8,11 @@ use crate::scenes::game::rooms::components::{
 use crate::scenes::game::rooms::data::RoomDef;
 use crate::state::GameState;
 
+/// Fill for every hotspot when `DEBUG_SHOW_HOTSPOTS` is on. Hotspots are
+/// otherwise invisible - they are a rectangle of clickable nothing - so this is
+/// the only way to see where the table actually put them.
+const DEBUG_HOTSPOT_COLOR: Color = Color::srgba(1.0, 0.0, 0.3, 0.6);
+
 pub(crate) fn spawn_room(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -45,7 +50,7 @@ pub fn spawn_room_content(
         return;
     }
     let hotspot_color = if crate::DEBUG_SHOW_HOTSPOTS {
-        Color::srgba(1.0, 0.0, 0.3, 0.6)
+        DEBUG_HOTSPOT_COLOR
     } else {
         Color::NONE
     };

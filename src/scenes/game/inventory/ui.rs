@@ -7,8 +7,22 @@ use crate::acts::{Inventory, Item};
 use crate::state::GameState;
 
 pub const INVENTORY_SLOT_COUNT: usize = 4;
-pub const SLOT_SIZE: f32 = 128.0 / 1.5;
-pub const ICON_SIZE: f32 = SLOT_SIZE * 100.0 / 128.0;
+
+/// The slot artwork is `SLOT_ART_SIZE` square with a 1px border drawn inside it,
+/// so a slot is drawn smaller than its picture or the frame shows up as a border
+/// around the contents.
+const SLOT_ART_SIZE: f32 = 128.0;
+const SLOT_BORDER: f32 = 1.5;
+pub const SLOT_SIZE: f32 = SLOT_ART_SIZE / SLOT_BORDER;
+
+/// The icon art is 100px square inside the 128px slot, so the icon is drawn at the
+/// same scale as the slot border and the two line up.
+const ICON_ART_SIZE: f32 = 100.0;
+pub const ICON_SIZE: f32 = SLOT_SIZE * ICON_ART_SIZE / SLOT_ART_SIZE;
+
+/// Distance from the screen edge, and between slots.
+const INVENTORY_MARGIN: f32 = 12.0;
+const INVENTORY_GAP: f32 = 8.0;
 
 #[derive(Component)]
 pub struct InventorySlot {
@@ -46,15 +60,16 @@ pub fn spawn_inventory_ui(
     inventory: Res<Inventory>,
     active: Res<ActiveInvSlot>,
 ) {
-    let s = ui_scale.0;
+    // `UiScale` itself, not the bare f32, so the `px` helper can be used.
+    let s = *ui_scale;
     commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Px(12.0 * s),
-                bottom: Val::Px(12.0 * s),
+                left: s.px(INVENTORY_MARGIN),
+                bottom: s.px(INVENTORY_MARGIN),
                 flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(8.0 * s),
+                column_gap: s.px(INVENTORY_GAP),
                 ..default()
             },
             Pickable::IGNORE,
@@ -73,8 +88,8 @@ pub fn spawn_inventory_ui(
                         InventorySlot { index },
                         ImageNode::new(slot_bg),
                         Node {
-                            width: Val::Px(SLOT_SIZE * s),
-                            height: Val::Px(SLOT_SIZE * s),
+                            width: s.px(SLOT_SIZE),
+                            height: s.px(SLOT_SIZE),
                             justify_content: JustifyContent::Center,
                             align_items: AlignItems::Center,
                             ..default()
@@ -91,8 +106,8 @@ pub fn spawn_inventory_ui(
                                     .unwrap_or_default(),
                             ),
                             Node {
-                                width: Val::Px(ICON_SIZE * s),
-                                height: Val::Px(ICON_SIZE * s),
+                                width: s.px(ICON_SIZE),
+                                height: s.px(ICON_SIZE),
                                 ..default()
                             },
                             if item.is_some() {

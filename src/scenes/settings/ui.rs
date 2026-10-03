@@ -21,6 +21,17 @@ pub const ACCENT_ON: Color = Color::srgb(0.95, 0.85, 0.35);
 const LABEL_COLOR: Color = Color::WHITE;
 const TRACK_COLOR: Color = Color::srgb(0.2, 0.2, 0.24);
 
+// The panel card behind the rows.
+const PANEL_ROW_GAP: f32 = 22.0;
+const PANEL_PADDING: f32 = 28.0;
+const PANEL_BORDER: f32 = 2.0;
+const PANEL_RADIUS: f32 = 6.0;
+const PANEL_BACKGROUND: Color = Color::srgb(0.0, 0.0, 0.0);
+const PANEL_BORDER_COLOR: Color = Color::srgb(0.35, 0.35, 0.4);
+
+/// The panel dims whatever is behind it, which is the menu rather than the game.
+const SCRIM_ALPHA: f32 = 0.6;
+
 /// A `Label + widget` row. Every setting has this shape, so the row layout and
 /// its label live here once and each row contributes only its own widget.
 fn settings_row(
@@ -129,7 +140,7 @@ pub fn spawn_settings_panel(
                 align_items: AlignItems::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, SCRIM_ALPHA)),
             Visibility::Hidden,
             GlobalZIndex(1),
             FocusPolicy::Block,
@@ -146,14 +157,14 @@ pub fn spawn_settings_panel(
                     Node {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
-                        row_gap: s.px(22.0),
-                        padding: UiRect::all(s.px(28.0)),
-                        border: UiRect::all(s.px(2.0)),
-                        border_radius: BorderRadius::all(s.px(6.0)),
+                        row_gap: s.px(PANEL_ROW_GAP),
+                        padding: UiRect::all(s.px(PANEL_PADDING)),
+                        border: UiRect::all(s.px(PANEL_BORDER)),
+                        border_radius: BorderRadius::all(s.px(PANEL_RADIUS)),
                         ..default()
                     },
-                    BackgroundColor(Color::srgb(0.0, 0.0, 0.0)),
-                    BorderColor::all(Color::srgb(0.35, 0.35, 0.4)),
+                    BackgroundColor(PANEL_BACKGROUND),
+                    BorderColor::all(PANEL_BORDER_COLOR),
                 ))
                 .with_children(|panel| {
                     panel.spawn((

@@ -4,10 +4,15 @@ use bevy::prelude::*;
 use crate::scenes::intro::systems::{LOGO_SCALE, LOGO_START_Y, Logo};
 use crate::state::GameState;
 
+/// The full-screen picture behind the logo, scaled rather than sized. Same art and
+/// same scale as the menu backdrop, so the two scenes do not jump when the intro
+/// hands over.
+const BACKDROP_SCALE: f32 = 3.0;
+
 pub fn spawn_intro_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite::from_image(asset_server.load("tex/main_fon.png")),
-        Transform::from_scale(Vec3::new(3.0, 3.0, 1.0)),
+        Transform::from_scale(Vec3::new(BACKDROP_SCALE, BACKDROP_SCALE, 1.0)),
         DespawnOnExit(GameState::Intro),
     ));
 

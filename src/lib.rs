@@ -25,6 +25,15 @@ pub const DESIGN_HEIGHT: f32 = 720.0;
 /// art. The camera is `FixedVertical` at `DESIGN_HEIGHT`, so this is fixed.
 pub const FRAME_HALF: Vec2 = Vec2::new(640.0, 360.0);
 
+/// How far the UI scale is allowed to move away from 1.0.
+///
+/// The lower bound keeps the HUD from collapsing on a very short window, where
+/// `s.px` would round most constants to nothing. The upper bound stops a tall
+/// window from inflating the UI past the size it was authored at - past that it
+/// looks oversized rather than proportional.
+const UI_SCALE_MIN: f32 = 0.4;
+const UI_SCALE_MAX: f32 = 2.5;
+
 /// Design-space to screen scale. UI code multiplies its constants by this so a
 /// layout authored against `DESIGN_HEIGHT` keeps its proportions.
 #[derive(Resource, Clone, Copy)]
@@ -68,17 +77,17 @@ pub fn main() {
 }
 
 fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera2d).insert(
-        Projection::Orthographic(OrthographicProjection {
+    commands
+        .spawn(Camera2d)
+        .insert(Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
                 viewport_height: DESIGN_HEIGHT,
             },
             ..OrthographicProjection::default_2d()
-        }),
-    );
+        }));
 }
 
 fn update_ui_scale(window: Single<&Window>, mut ui_scale: ResMut<UiScale>) {
     let logical_height = window.height() / window.scale_factor();
-    ui_scale.0 = (logical_height / DESIGN_HEIGHT).clamp(0.4, 2.5);
+    ui_scale.0 = (logical_height / DESIGN_HEIGHT).clamp(UI_SCALE_MIN, UI_SCALE_MAX);
 }

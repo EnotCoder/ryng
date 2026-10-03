@@ -10,6 +10,10 @@ pub struct LoadingOverlay {
 
 pub const SPLASH_SECONDS: f32 = 1.0;
 
+/// The preload overlay's label. Sized in design space and scaled like the rest of
+/// the UI, so it stays the same size relative to the screen as everything else.
+const OVERLAY_TEXT_SIZE: f32 = 30.0;
+
 #[derive(Resource)]
 pub struct SplashTimer(Timer);
 
@@ -80,7 +84,7 @@ pub fn spawn_loading_overlay(
             parent.spawn((
                 Text::new("Loading..."),
                 TextFont {
-                    font_size: FontSize::Px(30.0 * ui_scale),
+                    font_size: FontSize::Px(OVERLAY_TEXT_SIZE * ui_scale),
                     ..default()
                 },
                 TextColor(Color::WHITE),
