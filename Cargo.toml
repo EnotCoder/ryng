@@ -14,11 +14,29 @@ bevy = { version = "0.19.1", features = ["android-game-activity", "mp3"] }
 # Only for the `hotspot-editor` feature. Optional so an ordinary build pulls in
 # neither it nor its X11 dependency.
 arboard = { version = "3.6", optional = true }
+# Only for the `inspector` feature. Optional so an ordinary build pulls in neither
+# it nor the egui stack it drags in (bevy_egui, egui, egui_dock).
+bevy-inspector-egui = { version = "0.37", optional = true }
+# Only for the `inspector` feature, and only to switch one thing on.
+# `bevy-inspector-egui` depends on `bevy_egui` with `default-features = false`,
+# which leaves out bevy_egui's `bevy_ui` feature - and `ui_render_order` is
+# `#[cfg(feature = "bevy_ui")]`, so with it off the inspector has no say in where
+# it is drawn and the game's own Bevy UI renders over the top of it. Cargo
+# unifies features across the graph, so naming bevy_egui here turns that one
+# feature back on; `EguiAboveBevyUi` is then the default and the panel lands on
+# top. `default-features = false` matches what the inspector already asked for,
+# rather than pulling in open_url and friends.
+bevy_egui = { version = "0.40", default-features = false, features = ["bevy_ui"], optional = true }
 
 [features]
 # `cargo run --features hotspot-editor` adds the in-game hotspot overlay. The
 # module is compiled out entirely without this, so it cannot reach a release.
 hotspot-editor = ["dep:arboard"]
+# `cargo run --features inspector` draws the ECS inspector over the game: the
+# entity hierarchy, the components on the selected entity, and the resource list.
+# A debug tool rather than a game feature, which is why it is opt-in - and it
+# costs nothing when it is off.
+inspector = ["dep:bevy-inspector-egui", "dep:bevy_egui"]
 
 [profile.release]
 lto = "thin"

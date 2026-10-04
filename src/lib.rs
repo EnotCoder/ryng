@@ -59,8 +59,11 @@ impl UiScale {
 
 #[bevy_main]
 pub fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
+    // Bound on its own because the builder chain borrows the app: keeping it in a
+    // `let` is what lets the chain be one statement and the inspector be added
+    // after it, rather than both being fused into one expression.
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins)
         .add_plugins((
             scenes::loading::LoadingPlugin,
             scenes::intro::IntroPlugin,
@@ -72,8 +75,31 @@ pub fn main() {
         .init_resource::<UiScale>()
         .add_systems(Startup, spawn_camera)
         .add_systems(PreUpdate, update_ui_scale)
-        .add_systems(Update, scenes::loading::loading_system)
-        .run();
+        .add_systems(Update, scenes::loading::loading_system);
+
+    // The ECS inspector, drawn as a floating window over the game: the entity
+    // hierarchy, the components on the selected entity, and the resource and asset
+    // lists. A separate statement rather than another entry in the tuple above, so
+    // the list a plain build compiles is exactly the list it was before the
+    // inspector was added.
+    //
+    // `EguiPlugin` is bevy_egui's own bridge - the inspector draws through it -
+    // and `WorldInspectorPlugin` is the crate's drop-in window over the world.
+    // Both are needed: the first opens the context, the second fills it. Nothing
+    // has to be attached to the camera by hand: bevy_egui gives the first camera
+    // that appears a primary context of its own.
+    //
+    // `cfg` and not a `const`: without the feature the crate is not even linked,
+    // so a switch that could be quietly set to false would be a lie - the
+    // inspector would look present in the source and be absent from the build.
+    // This is the same reasoning as `DEBUG_HOTSPOT_EDIT` above.
+    #[cfg(feature = "inspector")]
+    app.add_plugins((
+        bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
+        bevy_inspector_egui::quick::WorldInspectorPlugin::new(),
+    ));
+
+    app.run();
 }
 
 fn spawn_camera(mut commands: Commands) {

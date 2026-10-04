@@ -19,6 +19,9 @@ cargo test         # unit tests
 cargo clippy --all-targets
 ```
 
+Two optional debug features, each of which is compiled out entirely without its
+flag: `--features hotspot-editor` (below) and `--features inspector`.
+
 ## What's in it
 
 - **Four states**, wired with Bevy's `States`: `Loading` -> `Intro` -> `Menu` -> `Game`
@@ -214,6 +217,53 @@ Three placement rules the tests enforce:
   topmost entity at that point, so a click aimed at her has to land on her.
 - **`room` names one row, not a place.** The concierge has two rows: lit and dark.
   She is in the lit one, because the dark row says nobody is on duty.
+
+## Inspector
+
+Almost everything worth checking while playing is the state of one entity: which
+room is loaded, which hotspots are currently live, what the inventory holds, what
+`RoomFade.phase` is doing mid-transition. That is what the ECS inspector is for.
+
+```sh
+cargo run --features inspector
+```
+
+It draws a floating, draggable window over the game with the entity hierarchy,
+the components on whatever is selected, and the lists of resources and assets -
+click a resource to see its contents.
+
+Two things about it are worth knowing before you trust it:
+
+- **It is not a second window.** It is an egui overlay inside the game window, so
+  it shows up in screenshots of the game and it can cover a corner of the picture.
+  bevy_egui hands its primary context to the first camera that appears, so nothing
+  has to be attached to `spawn_camera` by hand.
+- **The panel has to be told it goes on top.** `bevy-inspector-egui` depends on
+  `bevy_egui` with `default-features = false`, which leaves out bevy_egui's
+  `bevy_ui` feature - and `EguiPlugin::ui_render_order` is `#[cfg(feature =
+  "bevy_ui")]`, so with it off the plugin has no opinion about where it is drawn
+  and the game's own Bevy UI renders straight over the panel. The fix is the
+  `bevy_egui` line in `Cargo.toml`, which names that one feature; Cargo unifies
+  features across the graph, and `EguiAboveBevyUi` is then the default.
+- **It does not eat your clicks.** `EguiPlugin` leaves
+  `enable_absorb_bevy_input_system` off, so it never clears `MouseButtonInput`
+  and a click that lands on the panel still reaches `Pointer<Click>` underneath.
+  Clicking a door walks the player through *and* selects the hotspot.
+
+And one thing about what it can show:
+
+- **Component names, but not component values.** Nothing in this game derives
+  `Reflect`, and bevy_inspector_egui needs it to read a component's contents. So
+  the tree lists `Room`, `HotspotDef`, `Inventory`, `RoomFade` by name, and
+  opening one says *No access to component ...*. The entities are unnamed too, so
+  a hotspot is just `Entity (512v0)` - see `utils::guess_entity_name`. Deriving
+  `Reflect` and registering the types would make the inspector actually live,
+  which is the difference between reading it and using it.
+
+Behind the feature with the editor below, for the same reason and with the same
+guarantee: a plain `cargo run` does not link the crate or its egui stack, so none
+of it can reach a release build. It is also desktop-only, so it is not part of
+the Android build.
 
 ## Hotspot editor
 
