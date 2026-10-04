@@ -132,14 +132,32 @@ pub fn slot_click_system(
     }
 }
 
+/// A slot and its background plate.
+type SlotPlateQuery<'w, 's> = Query<'w, 's, (&'static InventorySlot, &'static mut ImageNode)>;
+
+/// A slot's icon, and whether it is shown at all.
+///
+/// `Visibility` is here because an empty slot hides its icon rather than drawing a
+/// blank one, so the two are always changed together.
+type SlotIconQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut SlotIcon,
+        &'static mut ImageNode,
+        &'static mut Visibility,
+    ),
+>;
+
+/// The slot and the icon are separate entities - the slot is a button, the icon is
+/// its child - so a system that writes both needs `ParamSet` to hand out one at a
+/// time. Naming the two queries keeps that legible; it is the reason this is not two
+/// systems, which would race on the same frame.
 pub fn update_inventory_ui(
     inventory: Res<Inventory>,
     active: Res<ActiveInvSlot>,
     textures: Res<InventoryTextures>,
-    mut params: ParamSet<(
-        Query<(&InventorySlot, &mut ImageNode)>,
-        Query<(&mut SlotIcon, &mut ImageNode, &mut Visibility)>,
-    )>,
+    mut params: ParamSet<(SlotPlateQuery, SlotIconQuery)>,
 ) {
     for (slot, mut bg) in &mut params.p0() {
         let slot_active = slot.index == active.0;

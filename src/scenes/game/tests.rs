@@ -113,3 +113,15 @@ fn cycling_visits_every_variant() {
         }
     }
 }
+
+/// The `impl Default` blocks became `#[derive(Default)]` with `#[default]` on a
+/// variant. Same variant has to come out, or the game quietly starts in the wrong
+/// room / plays the wrong door sound.
+#[test]
+fn derived_defaults_match_what_the_manual_impls_did() {
+    use crate::acts::ActId;
+    use crate::scenes::sound::TransitionSound;
+
+    assert_eq!(ActId::default(), ActId::ActOne);
+    assert_eq!(TransitionSound::default(), TransitionSound::NextRoom);
+}

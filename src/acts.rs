@@ -43,8 +43,11 @@ impl Default for Inventory {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ActId {
+    /// The first act is the default one: the game starts here, so anything that
+    /// needs an act before one is set gets the start of the story.
+    #[default]
     ActOne,
     ActTwo,
     ActThree,
@@ -82,9 +85,3 @@ pub fn default_act() -> Act {
 
 #[derive(Resource, Default)]
 pub struct CurrentAct(pub ActId);
-
-impl Default for ActId {
-    fn default() -> Self {
-        ActId::ActOne
-    }
-}

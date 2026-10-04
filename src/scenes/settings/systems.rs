@@ -76,8 +76,20 @@ pub struct SliderReadout;
 
 // ------------------------------------------------------------------ panel
 
+/// Menu buttons, for the system below that watches them.
+///
+/// Named because the generic version is unreadable at the point it matters: the
+/// `With<Button>` is what stops this firing on every widget in the menu, and
+/// `Changed` is what makes it edge-triggered rather than per-frame.
+type MenuButtonQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static Interaction, &'static MenuAction),
+    (Changed<Interaction>, With<Button>),
+>;
+
 pub fn settings_button_system(
-    mut interactions: Query<(&Interaction, &MenuAction), (Changed<Interaction>, With<Button>)>,
+    mut interactions: MenuButtonQuery,
     mut open: ResMut<SettingsPanelOpen>,
 ) {
     for (interaction, action) in &mut interactions {
@@ -87,11 +99,16 @@ pub fn settings_button_system(
     }
 }
 
+/// Buttons inside the settings panel itself, carrying the panel's own action.
+type PanelButtonQuery<'w, 's> = Query<
+    'w,
+    's,
+    (&'static Interaction, &'static SettingsPanelAction),
+    (Changed<Interaction>, With<Button>),
+>;
+
 pub fn close_button_system(
-    mut interactions: Query<
-        (&Interaction, &SettingsPanelAction),
-        (Changed<Interaction>, With<Button>),
-    >,
+    mut interactions: PanelButtonQuery,
     mut open: ResMut<SettingsPanelOpen>,
 ) {
     for (interaction, action) in &mut interactions {
@@ -183,10 +200,7 @@ pub fn slider_update_system<R: SettingResource + SliderValue>(
 
 // ------------------------------------------------------------------ apply
 
-pub fn apply_settings_system(
-    volume: Res<SoundVolume>,
-    mut global_volume: ResMut<GlobalVolume>,
-) {
+pub fn apply_settings_system(volume: Res<SoundVolume>, mut global_volume: ResMut<GlobalVolume>) {
     if volume.is_changed() {
         global_volume.volume = Volume::Linear(volume.0.clamp(0.0, 1.0));
     }

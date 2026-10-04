@@ -3,6 +3,7 @@ use crate::scenes::game::rooms::data::room_def;
 use crate::scenes::game::rooms::{components::Room, spawn::spawn_room};
 use crate::scenes::sound::{PlayingTransitionSound, play_transition_sound};
 use crate::state::GameState;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 pub const FADE_DURATION: f32 = 0.35;
@@ -64,13 +65,23 @@ pub fn auto_next_system(time: Res<Time>, mut fade: ResMut<RoomFade>) {
     }
 }
 
+/// The entities a transition has to clean up before the next room appears.
+///
+/// Both are read-only and both are used only to despawn, so they travel together:
+/// grouped they read as "what a transition clears", and ungrouped they read as two
+/// unrelated queries.
+#[derive(SystemParam)]
+pub struct StaleEntities<'w, 's> {
+    rooms: Query<'w, 's, Entity, With<Room>>,
+    sounds: Query<'w, 's, Entity, With<PlayingTransitionSound>>,
+}
+
 /// Darkens the screen, then swaps the room while it is fully black.
 pub fn fade_out_system(
     time: Res<Time>,
     mut fade: ResMut<RoomFade>,
     mut overlays: Query<&mut BackgroundColor, With<FadeOverlay>>,
-    rooms: Query<Entity, With<Room>>,
-    active_sounds: Query<Entity, With<PlayingTransitionSound>>,
+    stale: StaleEntities,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut current_act: ResMut<CurrentAct>,
@@ -88,7 +99,7 @@ pub fn fade_out_system(
         fade.phase = FadePhase::FadeIn(fade_timer());
         return;
     };
-    if let Ok(old) = rooms.single() {
+    if let Ok(old) = stale.rooms.single() {
         commands.entity(old).despawn();
     }
     let def = room_def(path, current_act.0);
@@ -101,7 +112,7 @@ pub fn fade_out_system(
     fade.auto_timer = def
         .auto_next
         .map(|(next, secs)| (next, Timer::from_seconds(secs, TimerMode::Once)));
-    for sound in &active_sounds {
+    for sound in &stale.sounds {
         commands.entity(sound).despawn();
     }
     play_transition_sound(&mut commands, &asset_server, &def.sound);

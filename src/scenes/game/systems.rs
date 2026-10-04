@@ -1,3 +1,4 @@
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use std::collections::HashSet;
 
@@ -22,6 +23,39 @@ use crate::state::GameState;
 /// The room drifts up and down a few pixels so a still picture is not perfectly
 /// still. Amplitude is in design pixels; speed is a period in seconds, written as
 /// `TAU / seconds` so it reads as "one full breath every 3.2s".
+/// The single room on screen. Every room system reads it and none of them can work
+/// with two: the game shows one picture at a time, and a room spawned while the
+/// previous one is still fading out is the only way to get more than one.
+type CurrentRoom<'w, 's> = Query<'w, 's, (Entity, &'static RoomDef), With<Room>>;
+
+/// Item sprites: the picture of a thing lying on the floor.
+///
+/// `Without<Room>` keeps the room's own root out of its children's list, and
+/// `ItemSprite` is what marks a sprite as a picture rather than a door.
+type ItemSpriteQuery<'w, 's> =
+    Query<'w, 's, (Entity, &'static ItemSprite), (With<RoomPart>, Without<Room>)>;
+
+/// Pickup and put-down spots: the only hotspots that come and go with an item.
+///
+/// The chevron beside a hotspot is drawn as a separate entity, and both queries
+/// below write `Visibility`, so they have to be declared disjoint - Bevy cannot
+/// prove on its own that a `Hotspot` is never also a `HotspotIcon`.
+type ItemHotspotQuery<'w, 's> = Query<
+    'w,
+    's,
+    (Entity, &'static HotspotAction, &'static mut Visibility),
+    (With<Hotspot>, With<ItemHotspot>, Without<HotspotIcon>),
+>;
+
+/// The blinking chevron drawn over a clickable hotspot, and its parent, so hiding
+/// a spot can hide the arrow beside it in the same pass.
+type HotspotIconQuery<'w, 's> = Query<
+    'w,
+    's,
+    (Entity, &'static ChildOf, &'static mut Visibility),
+    (With<HotspotIcon>, Without<Hotspot>),
+>;
+
 const BREATH_AMPLITUDE: f32 = 4.0;
 const BREATH_PERIOD: f32 = 3.2;
 const BREATH_SPEED: f32 = std::f32::consts::TAU / BREATH_PERIOD;
@@ -52,14 +86,25 @@ pub fn blink_hotspot_icons(time: Res<Time>, mut icons: Query<&mut Sprite, With<H
     }
 }
 
+/// The things a hotspot click can change.
+///
+/// The inventory, the items on the floor and the pending transition are read
+/// together because a click touches all three at once: picking something up changes
+/// the bag *and* the world, and a door changes the transition. Splitting them into
+/// separate parameters made the signature longer without saying anything.
+#[derive(SystemParam)]
+pub struct ClickOutcome<'w> {
+    inventory: ResMut<'w, Inventory>,
+    active_slot: Res<'w, ActiveInvSlot>,
+    world: ResMut<'w, WorldItems>,
+    fade: ResMut<'w, RoomFade>,
+}
+
 pub fn game_hotspot_system(
     mut clicks: MessageReader<Pointer<Click>>,
     hotspots: Query<(&HotspotAction, Option<&Item>, &HotspotDef), With<Hotspot>>,
     rooms: Query<&RoomDef, With<Room>>,
-    mut inventory: ResMut<Inventory>,
-    active_slot: Res<ActiveInvSlot>,
-    mut world: ResMut<WorldItems>,
-    mut fade: ResMut<RoomFade>,
+    mut outcome: ClickOutcome,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
@@ -74,14 +119,19 @@ pub fn game_hotspot_system(
             HotspotAction::GoToRoom(path) => {
                 // A door may ask for a set of tools, which are not spent, or for
                 // a single item that *is* spent, as the concierge desk does.
-                if !holds_all(&inventory, require) {
+                if !holds_all(&outcome.inventory, require) {
                     continue;
                 }
                 let allowed = match gate {
                     Some(item) => {
-                        let selected = inventory.0.get(active_slot.0).copied().flatten();
+                        let selected = outcome
+                            .inventory
+                            .0
+                            .get(outcome.active_slot.0)
+                            .copied()
+                            .flatten();
                         if selected == Some(*item) {
-                            inventory.0[active_slot.0] = None;
+                            outcome.inventory.0[outcome.active_slot.0] = None;
                             // The pass lands on the concierge's counter.
                             act(&mut commands, &asset_server, true);
                             true
@@ -98,9 +148,9 @@ pub fn game_hotspot_system(
             other => handle_item_action(
                 other,
                 here,
-                &mut world,
-                &mut inventory,
-                &active_slot,
+                &mut outcome.world,
+                &mut outcome.inventory,
+                &outcome.active_slot,
                 &mut commands,
                 &asset_server,
             ),
@@ -110,6 +160,7 @@ pub fn game_hotspot_system(
         if crate::DEBUG_SHOW_HOTSPOTS {
             eprintln!("DEBUG: hotspot clicked, room -> {path}");
         }
+        let fade = &mut outcome.fade;
         if matches!(&fade.phase, FadePhase::Idle) {
             fade.auto_timer = None;
             fade.pending = Some(path);
@@ -160,7 +211,7 @@ pub fn carousel_system(
         story.0 = variant.story;
         commands.entity(room).despawn_children();
         commands.entity(room).with_children(|parent| {
-            spawn_room_content(parent, &*asset_server, &variant, true);
+            spawn_room_content(parent, &asset_server, &variant, true);
         });
     });
 }
@@ -209,14 +260,8 @@ fn handle_item_action(
 pub fn item_hotspot_visibility_system(
     world: Res<WorldItems>,
     rooms: Query<&RoomDef, With<Room>>,
-    // Both queries write `Visibility`, so they must be declared disjoint. A
-    // hotspot and the chevron beside it are separate entities, and Bevy cannot
-    // prove they never overlap on its own.
-    mut hotspots: Query<
-        (Entity, &HotspotAction, &mut Visibility),
-        (With<Hotspot>, With<ItemHotspot>, Without<HotspotIcon>),
-    >,
-    mut icons: Query<(Entity, &ChildOf, &mut Visibility), (With<HotspotIcon>, Without<Hotspot>)>,
+    mut hotspots: ItemHotspotQuery,
+    mut icons: HotspotIconQuery,
 ) {
     let Ok(def) = rooms.single() else {
         return;
@@ -249,8 +294,8 @@ pub fn item_hotspot_visibility_system(
 /// only on a change.
 pub fn item_sprites_system(
     world: Res<WorldItems>,
-    rooms: Query<(Entity, &RoomDef), With<Room>>,
-    mut sprites: Query<(Entity, &ItemSprite), (With<RoomPart>, Without<Room>)>,
+    rooms: CurrentRoom,
+    mut sprites: ItemSpriteQuery,
     asset_server: Res<AssetServer>,
     mut commands: Commands,
 ) {
@@ -270,7 +315,7 @@ pub fn item_sprites_system(
         if resting_room != here || shown.contains(&item) {
             continue;
         }
-        let Some(pos) = item_position(&def, item) else {
+        let Some(pos) = item_position(def, item) else {
             continue;
         };
         let handle: Handle<Image> = asset_server.load(item.icon_path());

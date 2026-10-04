@@ -318,6 +318,20 @@ fn the_dialogue_is_in_english() {
 
 // ------------------------------------------------------------------ placement
 
+/// Whether two rectangles share any area. Touching edges do not count.
+///
+/// The same shape as `hotspot_edit::overlaps`, which the editor uses for its own
+/// overlap readout. Duplicated rather than reached across because the editor is
+/// compiled out without its feature, and this has to hold in a plain build too.
+fn rects_overlap(a_pos: Vec2, a_size: Vec2, b_pos: Vec2, b_size: Vec2) -> bool {
+    let (ahw, ahh) = (a_size.x / 2.0, a_size.y / 2.0);
+    let (bhw, bhh) = (b_size.x / 2.0, b_size.y / 2.0);
+    (a_pos.x - ahw < b_pos.x + bhw)
+        && (b_pos.x - bhw < a_pos.x + ahw)
+        && (a_pos.y - ahh < b_pos.y + bhh)
+        && (b_pos.y - bhh < a_pos.y + ahh)
+}
+
 /// She must not sit on top of the way out of the room.
 ///
 /// The concierge's exit is a 200x300 hotspot across the middle of the room, and
@@ -333,7 +347,7 @@ fn she_does_not_cover_the_way_out_of_the_room() {
         let room = room_def(def.room, ActId::ActOne);
         for variant in room.variants.iter() {
             for spot in variant.hotspots.iter() {
-                let overlaps = super::rects_overlap(def.pos, def.hit, spot.pos, spot.size);
+                let overlaps = rects_overlap(def.pos, def.hit, spot.pos, spot.size);
                 assert!(
                     !overlaps,
                     "{:?} covers the hotspot at ({}, {}) in {}, so clicking the way \

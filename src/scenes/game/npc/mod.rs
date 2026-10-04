@@ -235,20 +235,6 @@ pub enum Clicked {
     Nothing,
 }
 
-/// Whether two rectangles share any area. Touching edges do not count.
-///
-/// The same test the hotspot editor uses for its overlap readout, reached across
-/// rather than duplicated: the editor is compiled out without its feature, and this
-/// has to hold in a plain build.
-fn rects_overlap(a_pos: Vec2, a_size: Vec2, b_pos: Vec2, b_size: Vec2) -> bool {
-    let (ahw, ahh) = (a_size.x / 2.0, a_size.y / 2.0);
-    let (bhw, bhh) = (b_size.x / 2.0, b_size.y / 2.0);
-    (a_pos.x - ahw < b_pos.x + bhw)
-        && (b_pos.x - bhw < a_pos.x + ahw)
-        && (a_pos.y - ahh < b_pos.y + bhh)
-        && (b_pos.y - bhh < a_pos.y + ahh)
-}
-
 /// Decides what a click means.
 ///
 /// `on_npc` is the character that was clicked, if any. A click anywhere else is

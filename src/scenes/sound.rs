@@ -5,18 +5,16 @@ use crate::scenes::game::rooms::components::Room;
 use crate::scenes::game::rooms::data::RoomDef;
 use crate::state::GameState;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum TransitionSound {
+    /// The default: an ordinary door, which is most of them. A door that makes a
+    /// point has its own sound, so falling back to silence would be wrong - it would
+    /// read as a missing asset rather than as an ordinary room.
+    #[default]
     NextRoom,
     NextRoomWithOpenDoor,
     ElevatorFall,
     None,
-}
-
-impl Default for TransitionSound {
-    fn default() -> Self {
-        Self::NextRoom
-    }
 }
 
 fn path_for(sound: &TransitionSound) -> Option<&'static str> {

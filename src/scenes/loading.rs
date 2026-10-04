@@ -10,6 +10,12 @@ pub struct LoadingOverlay {
 
 pub const SPLASH_SECONDS: f32 = 1.0;
 
+/// How long the overlay takes to clear once the last texture is in.
+///
+/// Short on purpose: by then the player has already seen the splash, and a long
+/// fade here reads as the game being slow rather than as a transition.
+const FADE_OUT_SECONDS: f32 = 0.25;
+
 /// The preload overlay's label. Sized in design space and scaled like the rest of
 /// the UI, so it stays the same size relative to the screen as everything else.
 const OVERLAY_TEXT_SIZE: f32 = 30.0;
@@ -99,10 +105,11 @@ pub fn loading_system(
     mut commands: Commands,
 ) {
     for (entity, mut overlay, mut bg) in &mut overlays {
-        if overlay.fade.is_none() {
-            if overlay.pending.iter().all(|h| assets.get(h).is_some()) {
-                overlay.fade = Some(Timer::from_seconds(0.25, TimerMode::Once));
-            }
+        // Only arm the fade once everything has arrived, and never re-arm it: the
+        // `is_none` check is what stops a still-loading overlay from restarting the
+        // fade every frame.
+        if overlay.fade.is_none() && overlay.pending.iter().all(|h| assets.get(h).is_some()) {
+            overlay.fade = Some(Timer::from_seconds(FADE_OUT_SECONDS, TimerMode::Once));
         }
         if let Some(fade) = &mut overlay.fade {
             fade.tick(time.delta());
