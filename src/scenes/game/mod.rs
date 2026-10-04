@@ -13,21 +13,6 @@ mod systems;
 mod tests;
 mod ui;
 
-// Compiled out entirely without the feature, so none of this can reach a
-// release build.
-#[cfg(feature = "hotspot-editor")]
-mod hotspot_edit;
-
-/// False while the hotspot editor is holding the pointer, so the game's own
-/// click handling stands down.
-///
-/// Without the feature this is always true and nothing else in the crate has to
-/// know the editor exists. With it, the editor always wins: a click selects a
-/// hotspot rather than walking through it, which is the whole point.
-pub fn gameplay_active() -> bool {
-    !cfg!(feature = "hotspot-editor")
-}
-
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -50,23 +35,6 @@ impl Plugin for GamePlugin {
             .add_plugins((inventory::InventoryUiPlugin, npc::NpcPlugin))
             .add_systems(OnEnter(GameState::Game), ui::spawn_game_ui);
 
-        #[cfg(feature = "hotspot-editor")]
-        app.init_resource::<hotspot_edit::Edit>()
-            .insert_resource(hotspot_edit::init_clipboard())
-            .add_systems(OnEnter(GameState::Game), hotspot_edit::spawn_overlay)
-            .add_systems(
-                Update,
-                (
-                    hotspot_edit::keyboard,
-                    hotspot_edit::navigate,
-                    hotspot_edit::clipboard_system,
-                    hotspot_edit::markers,
-                    hotspot_edit::readout_text,
-                )
-                    .chain()
-                    .run_if(in_state(GameState::Game)),
-            );
-
         app.add_systems(
             Update,
             (
@@ -75,13 +43,9 @@ impl Plugin for GamePlugin {
                 auto_next_system,
                 fade_out_system,
                 fade_in_system,
-                systems::game_button_system.run_if(gameplay_active),
-                systems::carousel_system.run_if(gameplay_active),
-                // While the editor is up, a click means "select this hotspot",
-                // not "go through it". Both systems read the same
-                // Pointer<Click> and a MessageReader does not consume it, so the
-                // game's handling has to be switched off rather than out-raced.
-                systems::game_hotspot_system.run_if(gameplay_active),
+                systems::game_button_system,
+                systems::carousel_system,
+                systems::game_hotspot_system,
                 // After the hotspot systems, so a pickup despawns the sprite
                 // and clears the spot in the same frame it is taken.
                 systems::item_hotspot_visibility_system,

@@ -19,9 +19,6 @@ cargo test         # unit tests
 cargo clippy --all-targets
 ```
 
-Two optional debug features, each of which is compiled out entirely without its
-flag: `--features hotspot-editor` (below) and `--features inspector`.
-
 ## What's in it
 
 - **Four states**, wired with Bevy's `States`: `Loading` -> `Intro` -> `Menu` -> `Game`
@@ -59,9 +56,8 @@ flag: `--features hotspot-editor` (below) and `--features inspector`.
 | Inventory    | Click a slot to make it the active one             |
 | `Quit`       | Exit from the menu                                 |
 
-There is no keyboard input in the game itself. The arrow keys you may reach for do
-nothing, and that is deliberate — the only keyboard bindings in the codebase belong
-to the hotspot editor below.
+There is no keyboard input in the game at all. The arrow keys you may reach for do
+nothing, and that is deliberate — the game is played entirely with the mouse.
 
 ## Project structure
 
@@ -80,13 +76,12 @@ src/
     ├── fade.rs      # RoomFade state machine, drives transitions and act changes
     ├── sound.rs     # Music / TransitionSound tables
     └── game/
-        ├── mod.rs           # GamePlugin, gameplay_active()
+        ├── mod.rs           # GamePlugin
         ├── systems.rs       # Hotspot clicks, carousel, room breathing, icon blink
         ├── ui.rs            # Back button, carousel arrows, title, dialogue box
         ├── items.rs         # World items, take/drop rules, item sprite syncing
         ├── inventory/       # Inventory UI and active slot
         ├── npc/             # Characters: sprites, click targets, dialogue
-        ├── hotspot_edit.rs  # The editor, only with the feature on
         └── rooms/
             ├── components.rs  # Room, Hotspot, HotspotDef, RoomVariant
             ├── spawn.rs       # Room and hotspot spawning
@@ -139,14 +134,36 @@ macro at the `static` is what puts every literal into the constant initializer.
 `Item::DOOR_TOOLS` is the three tools the black door on floor 2 wants, and none of
 them is spent, so the player can still walk back through afterwards.
 
+### Reading a `hop!` line
+
+`hop!(p::F2_CORRIDOR, 555.0, 5.0, Vec2::new(150.0, 610.0))` is a door leading to
+the floor 2 corridor, 555px from the left edge of the picture and 5px down from the
+top, at 150x610 instead of the default 200x300.
+
+Coordinates are `x` from the left edge of the picture and `y` down from the top, in
+pixels of the 1280x720 art, because the camera is `FixedVertical` at 720. The
+world coordinates the engine works in are the same numbers with `y` flipped —
+positive `y` is up, so the table's `y = -210` is 210px *down* the picture.
+
+Two things decide where a line goes:
+
+- **The target names the direction, not the room.** A line pointing at `ap_3.png`
+  from inside apartment 3 belongs in `apartment!(p::AP_3, ...)`. The same picture
+  as a target from the corridor belongs in the corridor's row.
+- **Which numbers you paste matters.** The builders take arguments positionally.
+  `apartment!` is `path, title, exit, exit_x, exit_y, exit_size, teddy_x, teddy_y,
+  tool, tool_x, tool_y` — so `exit_x, exit_y, exit_size` are three consecutive
+  slots, and a size pasted into the teddy's slot compiles, runs, and quietly
+  moves the teddy instead of resizing the door. `cargo test` checks every
+  apartment's teddy spot is inside the frame and will name the room for you.
+
 ### One file per act
 
 The rows are split across `table/act_one.rs`, `act_two.rs` and `act_three.rs`, and
 `table/mod.rs` lists them in `ACTS` as the single statement of play order. That
-order is load-bearing: the hotspot editor steps through rooms with `[` and `]`
-and prints "room 7/21", so moving a row between files renumbers the editor even
-though the game plays identically. `data::tests` pins the whole route to catch
-that.
+order is load-bearing: `data::tests` pins the whole route as a literal vector, so
+moving a row between files has to be a deliberate edit to that test rather than a
+reordering that happens to play identically.
 
 A room belongs to the act that is current *while the player stands in it*, and the
 act changes on entry to the room carrying `next_act` — so that room is the first
@@ -218,119 +235,6 @@ Three placement rules the tests enforce:
 - **`room` names one row, not a place.** The concierge has two rows: lit and dark.
   She is in the lit one, because the dark row says nobody is on duty.
 
-## Inspector
-
-Almost everything worth checking while playing is the state of one entity: which
-room is loaded, which hotspots are currently live, what the inventory holds, what
-`RoomFade.phase` is doing mid-transition. That is what the ECS inspector is for.
-
-```sh
-cargo run --features inspector
-```
-
-It draws a floating, draggable window over the game with the entity hierarchy,
-the components on whatever is selected, and the lists of resources and assets -
-click a resource to see its contents.
-
-Two things about it are worth knowing before you trust it:
-
-- **It is not a second window.** It is an egui overlay inside the game window, so
-  it shows up in screenshots of the game and it can cover a corner of the picture.
-  bevy_egui hands its primary context to the first camera that appears, so nothing
-  has to be attached to `spawn_camera` by hand.
-- **The panel has to be told it goes on top.** `bevy-inspector-egui` depends on
-  `bevy_egui` with `default-features = false`, which leaves out bevy_egui's
-  `bevy_ui` feature - and `EguiPlugin::ui_render_order` is `#[cfg(feature =
-  "bevy_ui")]`, so with it off the plugin has no opinion about where it is drawn
-  and the game's own Bevy UI renders straight over the panel. The fix is the
-  `bevy_egui` line in `Cargo.toml`, which names that one feature; Cargo unifies
-  features across the graph, and `EguiAboveBevyUi` is then the default.
-- **It does not eat your clicks.** `EguiPlugin` leaves
-  `enable_absorb_bevy_input_system` off, so it never clears `MouseButtonInput`
-  and a click that lands on the panel still reaches `Pointer<Click>` underneath.
-  Clicking a door walks the player through *and* selects the hotspot.
-
-And one thing about what it can show:
-
-- **Component names, but not component values.** Nothing in this game derives
-  `Reflect`, and bevy_inspector_egui needs it to read a component's contents. So
-  the tree lists `Room`, `HotspotDef`, `Inventory`, `RoomFade` by name, and
-  opening one says *No access to component ...*. The entities are unnamed too, so
-  a hotspot is just `Entity (512v0)` - see `utils::guess_entity_name`. Deriving
-  `Reflect` and registering the types would make the inspector actually live,
-  which is the difference between reading it and using it.
-
-Behind the feature with the editor below, for the same reason and with the same
-guarantee: a plain `cargo run` does not link the crate or its egui stack, so none
-of it can reach a release build. It is also desktop-only, so it is not part of
-the Android build.
-
-## Hotspot editor
-
-Coordinates are `x` from the left edge and `y` down from the top, measured off the
-room picture. Getting them by hand is tedious, so there is an overlay:
-
-```sh
-cargo run --features hotspot-editor
-```
-
-It draws a faint rectangle over every hotspot in the room, brighter over the
-selected one, with a readout along the bottom.
-
-| Input      | Action                                             |
-| ---------- | -------------------------------------------------- |
-| Left click | Select a hotspot                                   |
-| Arrows     | Move by 5px, 1px with Shift held                   |
-| `Q` / `E`  | Shrink / grow by 5px on both axes                  |
-| `A` / `D`  | Width only                                         |
-| `W` / `S`  | Height only                                        |
-| `C`        | Copy the definition line for the current placement  |
-| `Esc`      | Drop the selection                                 |
-| `[` / `]`  | Previous / next room in the table                  |
-| `G`        | Jump to the first room of the current act          |
-
-The per-axis keys are the ones you want: a door frame is wide and short, and
-reaching that from the default rectangle by growing both sides in step means
-walking the width back down five pixels at a time.
-
-The readout names the room, the act, the hotspot index and the definition line,
-and lists any other hotspot the selection overlaps — an overlap means the top one
-swallows the clicks meant for the one underneath, which is better to find while
-placing things than after.
-
-It never writes to the source. It shows you the line and puts it on the
-clipboard, and you paste it: a tool that edits your code while you hold the arrow
-keys is how you end up with a diff you cannot explain.
-
-The overlay is behind a Cargo feature, so a plain `cargo run` compiles the module
-out entirely and it cannot reach a release build. With the feature on, the editor
-always wins the pointer, so clicks select instead of walking the player through
-the door.
-
-### Reading the line it gives you
-
-`hop!(tex/rooms/floor_2/room_2.png, 555.0, 5.0, Vec2::new(150.0, 610.0))` means a
-door leading to the floor 2 corridor, 15px right of where it was and 5px up, at
-150x610 instead of the default 200x300. The size is only printed when it differs
-from the default, so a line without one is not missing anything.
-
-Two things decide where the line goes:
-
-- **The target names the direction, not the room.** This one points *out of*
-  apartment 3, so it belongs in `apartment!(p::AP_3, ...)` in `table.rs`. A line
-  pointing at `ap_3.png` would instead belong to the corridor's row.
-- **Which numbers you paste matters.** The builders take arguments positionally.
-  `apartment!` is `path, title, exit, exit_x, exit_y, exit_size, teddy_x, teddy_y,
-  tool, tool_x, tool_y` — so `exit_x, exit_y, exit_size` are three consecutive
-  slots, and a size pasted into the teddy's slot compiles, runs, and quietly
-  moves the teddy instead of resizing the door. `cargo test` checks every
-  apartment's teddy spot is inside the frame and will name the room for you.
-
-Coordinates are `x` from the left edge of the picture and `y` from the top, in
-pixels of the 1280x720 art, because the camera is `FixedVertical` at 720. The
-world coordinates the engine works in are the same numbers with `y` flipped —
-positive `y` is up, so the table's `y = -210` is 210px *down* the picture. The
-editor prints picture convention, since that is what you measure off the art.
 
 ## License
 

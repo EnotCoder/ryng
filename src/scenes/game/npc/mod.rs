@@ -273,10 +273,6 @@ pub fn classify_click(speaking: Option<NpcId>, on_npc: Option<NpcId>) -> Clicked
 /// aimed at the door does nothing at all, because something invisible is in the
 /// way, and a player who cannot leave the room until a timer expires cannot leave
 /// the room.
-///
-/// Gated on `gameplay_active` for the same reason the hotspot system is: with the
-/// editor open a click means "select this", and dialogue over the selection readout
-/// would be worse than useless.
 pub(crate) fn npc_click_system(
     mut clicks: MessageReader<Pointer<Click>>,
     targets: Query<&NpcTarget>,
@@ -358,7 +354,7 @@ impl Plugin for NpcPlugin {
                 Update,
                 (
                     spawn_npc_sprites,
-                    npc_click_system.run_if(crate::scenes::game::gameplay_active),
+                    npc_click_system,
                     clear_speech_on_move,
                     speech_timeout_system,
                     update_speech_visibility,

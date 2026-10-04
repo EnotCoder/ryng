@@ -320,9 +320,8 @@ fn the_dialogue_is_in_english() {
 
 /// Whether two rectangles share any area. Touching edges do not count.
 ///
-/// The same shape as `hotspot_edit::overlaps`, which the editor uses for its own
-/// overlap readout. Duplicated rather than reached across because the editor is
-/// compiled out without its feature, and this has to hold in a plain build too.
+/// Kept local rather than shared: nothing outside this file needs it, and a
+/// helper that only has one caller is better off next to its caller.
 fn rects_overlap(a_pos: Vec2, a_size: Vec2, b_pos: Vec2, b_size: Vec2) -> bool {
     let (ahw, ahh) = (a_size.x / 2.0, a_size.y / 2.0);
     let (bhw, bhh) = (b_size.x / 2.0, b_size.y / 2.0);
