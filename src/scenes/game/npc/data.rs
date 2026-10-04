@@ -72,14 +72,14 @@ pub const GRANNY: NpcDef = NpcDef {
     // that is invisible until you try to walk out. `tests::she_does_not_cover_the_
     // way_out_of_the_room` keeps that true; move her back towards the middle and it
     // fails.
-    pos: Vec2::new(170.0, 105.0),
+    pos: Vec2::new(-300.0, 0.0),
     // Drawn large enough to read as a person rather than a detail: 120x200 against
     // the 1280x720 room. Her feet land near the counter at world y = 60 and her head
     // is still inside the recess, so she reads as standing behind the desk.
-    size: Vec2::new(120.0, 200.0),
+    size: Vec2::new(180.0, 300.0),
     // Wider than the figure so the target is forgiving, and kept clear of the door:
     // 170 - 65 = 105, which is 5px past the door's right edge at 100.
-    hit: Vec2::new(130.0, 215.0),
+    hit: Vec2::new(250.0, 410.0),
     // The warning the whole character exists to give: the player walks past the
     // elevator and the ride is what drops them into the basement. She says it once
     // and then stops repeating it, which is the point - missed it the first time,
