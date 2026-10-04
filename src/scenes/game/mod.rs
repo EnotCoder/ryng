@@ -6,6 +6,7 @@ use crate::state::GameState;
 
 mod inventory;
 mod items;
+mod npc;
 pub mod rooms;
 mod systems;
 #[cfg(test)]
@@ -46,7 +47,7 @@ impl Plugin for GamePlugin {
                 (Item::MetalCutters, "tex/rooms/floor_2/ap_2.png"),
                 (Item::KeyDoor2, "tex/rooms/floor_2/ap_3.png"),
             ]))
-            .add_plugins(inventory::InventoryUiPlugin)
+            .add_plugins((inventory::InventoryUiPlugin, npc::NpcPlugin))
             .add_systems(OnEnter(GameState::Game), ui::spawn_game_ui);
 
         #[cfg(feature = "hotspot-editor")]

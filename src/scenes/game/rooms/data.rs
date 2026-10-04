@@ -87,8 +87,13 @@ pub(crate) fn room_key_list() -> Vec<&'static str> {
 }
 
 /// Every picture the game needs, for the loading overlay.
+///
+/// The NPC pictures are included: an NPC's texture is otherwise only asked for when
+/// the player walks into its room, which is exactly the moment the overlay is gone
+/// and the sprite would pop in over the fade.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
     rooms()
         .flat_map(|room| room.variants.iter())
         .map(|variant| variant.path)
+        .chain(crate::scenes::game::npc::paths())
 }

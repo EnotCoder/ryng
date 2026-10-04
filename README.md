@@ -28,6 +28,8 @@ cargo clippy --all-targets
   setting is a type plus one line
 - **Rooms** declared as data, not code: 21 rows split one file per act, each with a
   picture, a title, a story line, transition sound, music and its hotspots
+- **Characters** with dialogue: click the granny in the concierge and she warns you
+  about the elevator; any click puts the line away, the next one starts the next line
 - **Four kinds of room**: interactive (`room!`), a beat that plays and moves on by
   itself (`beat!` / `chapter!`), a carousel of two or more pictures the player
   flips through (`carousel!`), and a repeated floor-2 apartment (`apartment!`)
@@ -50,6 +52,7 @@ cargo clippy --all-targets
 | Left mouse   | Press / hover / release to click                  |
 | `Back`       | Return to the menu from a room                     |
 | `<` / `>`     | Flip between the pictures of a carousel room       |
+| Character     | Talk; click anywhere to put the line away           |
 | Inventory    | Click a slot to make it the active one             |
 | `Quit`       | Exit from the menu                                 |
 
@@ -76,9 +79,10 @@ src/
     └── game/
         ├── mod.rs           # GamePlugin, gameplay_active()
         ├── systems.rs       # Hotspot clicks, carousel, room breathing, icon blink
-        ├── ui.rs            # Back button, carousel arrows, title/story, preload
+        ├── ui.rs            # Back button, carousel arrows, title, dialogue box
         ├── items.rs         # World items, take/drop rules, item sprite syncing
         ├── inventory/       # Inventory UI and active slot
+        ├── npc/             # Characters: sprites, click targets, dialogue
         ├── hotspot_edit.rs  # The editor, only with the feature on
         └── rooms/
             ├── components.rs  # Room, Hotspot, HotspotDef, RoomVariant
@@ -160,6 +164,56 @@ Adding an act is a new file with a `ROOMS`, one line in `ACTS`, and whatever
 `next_act` the last room of the previous act should carry. Nothing outside
 `table/` changes: everything else reads the rooms through `data::rooms()`, which
 flattens `ACTS`.
+
+## Characters
+
+An NPC is a sprite, a clickable rectangle, and a list of lines. Adding one is a
+row in `src/scenes/game/npc/data.rs`:
+
+```rust
+pub const GRANNY: NpcDef = NpcDef {
+    id: NpcId::Granny,
+    texture: "tex/npc/granny.png",
+    room: p::F1_CONCIERGE,
+    pos: Vec2::new(170.0, 105.0),
+    size: Vec2::new(120.0, 200.0),
+    hit: Vec2::new(130.0, 215.0),
+    lines: &["...", "..."],
+};
+```
+
+All in-game text is English. A test walks the dialogue table and fails on a
+non-ASCII line, so a stray translation does not ship unread.
+
+Click her and the line goes into a box on screen. While it is there, **any** click
+puts it away — clicking the wall, clicking a door, clicking her again. There is no
+button behind it: the system reads every click in the app, including the ones that
+landed on nothing. From empty, clicking her starts the next thing she has to say.
+Once her lines run out the last one repeats, because a character who goes silent
+reads as a bug rather than as an ending. The count is kept per character rather
+than per room, so leaving and coming back does not reset it.
+
+A dismiss does not count as a conversation, so clicking twice to move on does not
+skip what she would have said. And because `MessageReader` cannot consume a click,
+dismissing never blocks the game: a click on a door both puts the line away and
+walks the player through, rather than trapping them until the timer expires.
+
+Characters are deliberately not hotspots. A hotspot moves the player or changes
+the inventory; clicking a character only produces speech, so routing it through
+`HotspotAction` would mean either adding a variant that cannot move the player or
+special-casing doors out of the existing one.
+
+Three placement rules the tests enforce:
+
+- **She must not cover the way out.** The concierge's exit is a 200x300 hotspot
+  across the middle of the room, and her target is drawn above the hotspot layer,
+  so overlap means clicking the door talks to her instead and the player cannot
+  leave. That is a soft lock. The recess in the desk runs to about `x = 240` while
+  the door stops at `x = 100`, which is the room she has to stand in.
+- **The click target is above the hotspot layer.** Picking hands a click to the
+  topmost entity at that point, so a click aimed at her has to land on her.
+- **`room` names one row, not a place.** The concierge has two rows: lit and dark.
+  She is in the lit one, because the dark row says nobody is on duty.
 
 ## Hotspot editor
 

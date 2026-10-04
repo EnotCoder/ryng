@@ -13,6 +13,21 @@ use crate::state::GameState;
 /// the only way to see where the table actually put them.
 const DEBUG_HOTSPOT_COLOR: Color = Color::srgba(1.0, 0.0, 0.3, 0.6);
 
+/// The room picture sits at z 0 and everything the player can interact with is
+/// layered above it: item sprites at 0.5, an NPC's picture at 0.6, the hotspots at
+/// 1.0, and an NPC's click target at 1.5.
+///
+/// The order between the two clickable layers is load-bearing, not cosmetic. The
+/// concierge's way out is a hotspot and the granny stands in front of it, so
+/// whichever is higher takes the click - and the whole point of her is that she
+/// speaks when you click her rather than the player leaving the room.
+#[cfg(test)]
+pub(crate) fn test_hotspot_z() -> f32 {
+    HOTSPOT_Z
+}
+
+pub(crate) const HOTSPOT_Z: f32 = 1.0;
+
 pub(crate) fn spawn_room(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -63,7 +78,7 @@ pub fn spawn_room_content(
             // without keeping a parallel copy of it.
             *def,
             Sprite::from_color(hotspot_color, def.size),
-            Transform::from_xyz(def.pos.x, def.pos.y, 1.0),
+            Transform::from_xyz(def.pos.x, def.pos.y, HOTSPOT_Z),
             Pickable::default(),
         ));
         if let Some(gate) = def.gate {

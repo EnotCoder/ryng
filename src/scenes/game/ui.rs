@@ -188,3 +188,127 @@ pub fn update_room_label(
         }
     }
 }
+
+// --------------------------------------------------------------- dialogue
+
+/// Marks the dialogue box, so the system that fills it can find it again.
+#[derive(Component)]
+pub(crate) struct SpeechBox;
+
+/// Dialogue sits above the carousel arrows and to the right of the inventory, so
+/// it does not cover either. A character stands in the room, and what she says
+/// belongs next to her rather than in the corner with the room name.
+const SPEECH_WIDTH: f32 = 620.0;
+const SPEECH_BOTTOM: f32 = 90.0;
+const SPEECH_PADDING: f32 = 18.0;
+const SPEECH_GAP: f32 = 10.0;
+const SPEECH_TEXT_SIZE: f32 = 22.0;
+const SPEECH_NAME_SIZE: f32 = 18.0;
+
+/// A dark plate behind the text: the rooms are photographic and a line of light
+/// text on top of one is unreadable.
+const SPEECH_BACKGROUND: Color = Color::srgba(0.0, 0.0, 0.0, 0.72);
+const SPEECH_NAME_COLOR: Color = Color::srgb(0.95, 0.85, 0.35);
+const SPEECH_TEXT_COLOR: Color = Color::WHITE;
+
+/// Spawned empty and shown only while somebody is talking, so the box does not sit
+/// over the room with nothing in it.
+pub(crate) fn spawn_speech_ui(mut commands: Commands, ui_scale: Res<UiScale>) {
+    let s = *ui_scale;
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: s.px(SPEECH_WIDTH),
+                bottom: s.px(SPEECH_BOTTOM),
+                right: s.px(SPEECH_MARGIN),
+                padding: UiRect::all(s.px(SPEECH_PADDING)),
+                row_gap: s.px(SPEECH_GAP),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexStart,
+                ..default()
+            },
+            BackgroundColor(SPEECH_BACKGROUND),
+            SpeechBox,
+            // Nothing is being said when the room is entered, so the box starts
+            // hidden rather than flashing empty.
+            Visibility::Hidden,
+            Pickable::IGNORE,
+            DespawnOnExit(GameState::Game),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(""),
+                TextFont {
+                    font_size: s.font(SPEECH_NAME_SIZE),
+                    ..default()
+                },
+                TextColor(SPEECH_NAME_COLOR),
+                SpeechName,
+            ));
+            parent.spawn((
+                Text::new(""),
+                TextFont {
+                    font_size: s.font(SPEECH_TEXT_SIZE),
+                    ..default()
+                },
+                TextColor(SPEECH_TEXT_COLOR),
+                SpeechLine,
+            ));
+        });
+}
+
+/// How far the box keeps from the right edge, clearing the carousel arrows.
+const SPEECH_MARGIN: f32 = 20.0;
+
+#[derive(Component)]
+pub(crate) struct SpeechName;
+
+#[derive(Component)]
+pub(crate) struct SpeechLine;
+
+/// Shows the dialogue box only while somebody is talking, so it does not sit over
+/// the room with nothing in it.
+///
+/// Compared against what is already set rather than assigned every frame, so a
+/// hidden box does not dirty its own visibility each frame.
+pub(crate) fn update_speech_visibility(
+    speech: Res<super::npc::Speech>,
+    mut boxes: Query<&mut Visibility, With<SpeechBox>>,
+) {
+    let wanted = if speech.who.is_some() {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
+    for mut visible in &mut boxes {
+        if *visible != wanted {
+            *visible = wanted;
+        }
+    }
+}
+
+/// Writes the line and the speaker's name.
+///
+/// The two queries are declared disjoint because both write `Text` and Bevy cannot
+/// prove the name and the line are never the same entity.
+pub(crate) fn update_speech_text(
+    speech: Res<super::npc::Speech>,
+    mut names: Query<&mut Text, (With<SpeechName>, Without<SpeechLine>)>,
+    mut lines: Query<&mut Text, (With<SpeechLine>, Without<SpeechName>)>,
+) {
+    let Some(who) = speech.who else {
+        return;
+    };
+    let name = super::npc::display_name(who);
+    for mut text in &mut names {
+        if text.0 != name {
+            text.0 = name.to_owned();
+        }
+    }
+    for mut text in &mut lines {
+        if text.0 != speech.line {
+            text.0 = speech.line.clone();
+        }
+    }
+}
