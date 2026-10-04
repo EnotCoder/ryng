@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 pub mod acts;
 pub mod buttons;
+pub mod cli;
 pub mod scenes;
 pub mod state;
 

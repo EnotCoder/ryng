@@ -33,10 +33,37 @@ use table::{ACTS, UNKNOWN};
 /// Every room in the table, acts in play order.
 ///
 /// The table is a list of lists so each act can be its own file; this is the one
-/// place that flattens it. The order is the player's route, which the hotspot
-/// editor's room stepping depends on, so it is the `ACTS` order in [`table`].
+/// place that flattens it. The order is the player's route, which is what the
+/// `--rooms` flag in [`crate::cli`] counts along.
 pub(crate) fn rooms() -> impl Iterator<Item = &'static RoomDef> {
-    ACTS.iter().flat_map(|act| act.iter())
+    ACTS
+        .iter()
+        .flat_map(|(_, rows)| rows.iter())
+}
+
+/// The same list as [`rooms`], each row paired with the act that owns it.
+///
+/// A room belongs to the act the player is in while they stand in it, so starting
+/// the game in one without its act would put `CurrentAct` somewhere the route
+/// never does - and act 2 is what decides whether the concierge is lit.
+pub(crate) fn rooms_with_act() -> impl Iterator<Item = (ActId, &'static RoomDef)> {
+    ACTS.iter()
+        .flat_map(|(act, rows)| rows.iter().map(move |room| (*act, room)))
+}
+
+/// The act that owns `path`, if the table has a row for it.
+pub(crate) fn act_of(path: &str) -> Option<ActId> {
+    ACTS.iter()
+        .find(|(_, rows)| rows.iter().any(|room| key_of(room) == path))
+        .map(|(act, _)| *act)
+}
+
+/// A room's lookup key: the path of its first variant.
+///
+/// The key rather than the whole row, because that is what every caller that
+/// wants "which room is this" actually has to hand onwards.
+pub(crate) fn key_of(room: &RoomDef) -> &'static str {
+    room.variants[0].path
 }
 
 #[derive(Component, Clone, Copy)]

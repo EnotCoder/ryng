@@ -125,3 +125,61 @@ fn derived_defaults_match_what_the_manual_impls_did() {
     assert_eq!(ActId::default(), ActId::ActOne);
     assert_eq!(TransitionSound::default(), TransitionSound::NextRoom);
 }
+
+// ------------------------------------------------- the backdrop stays behind
+
+/// The blurred backdrop is spawned *after* the room, and the room picture is a
+/// child of `Room` drawing at z 0. Two sprites on the same z are ordered by when
+/// they were spawned, so the backdrop wins the tie and goes over the room: the
+/// player sees `main_fon.png` with a working inventory and clickable hotspots on
+/// top, and no room.
+///
+/// It went unnoticed because the menu and the intro both spawn their own backdrop
+/// and despawn it on the way out, so a room and a backdrop had never been drawn
+/// at the same z before. `--rooms` reaches `OnEnter(Game)` directly, which is
+/// where it showed up.
+///
+/// Asserted against the room picture's own z rather than a constant, because the
+/// room is what has to be visible: read as two literals, the test would pass
+/// whatever both happened to be.
+#[test]
+fn the_backdrop_is_behind_the_room_picture() {
+    use crate::acts::{ActId, CurrentAct};
+    use crate::scenes::game::rooms::components::Room;
+    use crate::scenes::game::rooms::data::{p, room_def};
+    use crate::scenes::game::rooms::spawn::spawn_room;
+
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
+        .insert_resource(CurrentAct(ActId::ActOne));
+
+    // The real spawner rather than a hand-built entity, so the z this reads is
+    // the one the game draws with.
+    let def = room_def(p::F1_STREET_1, ActId::ActOne);
+    app.add_systems(
+        Update,
+        move |mut commands: Commands, asset_server: Res<AssetServer>| {
+            spawn_room(&mut commands, &asset_server, def, Vec3::ZERO);
+        },
+    );
+    app.update();
+
+    let world = app.world_mut();
+    // The room's own transform is the picture's: the picture is its first child
+    // and nothing moves a child in z, so the root carries the whole room's layer.
+    let mut rooms = world.query_filtered::<&Transform, With<Room>>();
+    let room_picture = rooms
+        .iter(world)
+        .next()
+        .expect("the room spawned")
+        .translation
+        .z;
+
+    assert!(
+        super::ui::BACKDROP_Z < room_picture,
+        "the backdrop is at z {} and the room picture at z {room_picture}, so the \\
+         backdrop is drawn over the room",
+        super::ui::BACKDROP_Z,
+    );
+}

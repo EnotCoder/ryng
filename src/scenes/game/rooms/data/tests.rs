@@ -9,7 +9,7 @@ use crate::acts::{ActId, default_act};
 use crate::scenes::game::rooms::components::HotspotAction;
 
 use super::table::ACTS;
-use super::{RoomDef, all_paths, p, room_def, rooms};
+use super::{RoomDef, all_paths, key_of, p, room_def, rooms, rooms_with_act};
 
 /// Every way out of a room: each hotspot plus the auto-next hand-off.
 ///
@@ -23,11 +23,6 @@ fn edges_of(room: &RoomDef) -> impl Iterator<Item = &'static str> {
             HotspotAction::Take(_) | HotspotAction::Drop(_) => None,
         })
         .chain(room.auto_next.map(|(target, _)| target))
-}
-
-/// The lookup key of a room, which is the path of its first variant.
-fn key_of(room: &RoomDef) -> &'static str {
-    room.variants[0].path
 }
 
 fn is_room(path: &str) -> bool {
@@ -146,8 +141,8 @@ fn the_table_is_split_into_three_acts() {
 #[test]
 fn each_act_starts_at_the_room_that_changes_into_it() {
     let starts = [default_act().start_room, p::B_HALL, p::F2_HALL];
-    for (act, start) in ACTS.iter().zip(starts) {
-        let keys: Vec<&str> = act.iter().map(|def| key_of(def)).collect();
+    for ((_, rows), start) in ACTS.iter().zip(starts) {
+        let keys: Vec<&str> = rows.iter().map(key_of).collect();
         assert_eq!(
             keys.first().copied(),
             Some(start),
@@ -165,6 +160,48 @@ fn each_act_starts_at_the_room_that_changes_into_it() {
         room_def(p::F2_HALL, ActId::ActTwo).next_act,
         Some(ActId::ActThree),
     );
+}
+
+/// `ACTS` now labels each act explicitly rather than leaving the label to be read
+/// off the position, so the two have to agree - a label that drifts from its rows
+/// would make `rooms_with_act` report an act the route never enters, and
+/// `--rooms` would open a room under the wrong one.
+#[test]
+fn each_act_is_labelled_with_itself() {
+    let labels: Vec<ActId> = ACTS.iter().map(|(act_id, _)| *act_id).collect();
+    assert_eq!(
+        labels,
+        vec![ActId::ActOne, ActId::ActTwo, ActId::ActThree],
+        "the labels do not read one, two, three down ACTS",
+    );
+}
+
+/// And the labels have to line up with what each act's own start room says, which
+/// is the one place the game itself agrees on which act is which.
+#[test]
+fn each_rows_act_matches_the_act_that_starts_there() {
+    for ((act_id, rows), start) in ACTS.iter().zip([
+        default_act().start_room,
+        p::B_HALL,
+        p::F2_HALL,
+    ]) {
+        let first = *rows.first().expect("an act has rooms");
+        assert_eq!(key_of(&first), start, "unexpected first room for {act_id:?}");
+        assert_eq!(
+            crate::scenes::game::rooms::data::act_of(start),
+            Some(*act_id),
+            "{act_id:?} is labelled but {start} disagrees",
+        );
+    }
+}
+
+/// `rooms_with_act` is what `--rooms` counts along, so it has to be `rooms()` with
+/// nothing added and nothing dropped.
+#[test]
+fn the_numbered_route_is_the_whole_route() {
+    let numbered: Vec<&str> = rooms_with_act().map(|(_, room)| key_of(room)).collect();
+    let plain: Vec<&str> = rooms().map(key_of).collect();
+    assert_eq!(numbered, plain);
 }
 
 /// Every picture the table names has to exist, or the room spawns as a blank

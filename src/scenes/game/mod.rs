@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::acts::{CurrentAct, Inventory, Item};
+use crate::cli;
 use crate::scenes::fade::{RoomFade, auto_next_system, fade_in_system, fade_out_system};
 use crate::state::GameState;
 
@@ -13,13 +14,29 @@ mod systems;
 mod tests;
 mod ui;
 
+/// The room the game should open in, when `--rooms` asked for one.
+///
+/// `None` for an ordinary run, which is what makes the flag inert by default: the
+/// start room then comes from the current act as it always did.
+#[derive(Resource, Default, Clone, Copy)]
+pub struct StartRoom(pub Option<&'static str>);
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
+        // Read once, here, rather than in `main`: the plugin already owns the
+        // starting `CurrentAct` and the room it goes with, and `init_resource`
+        // would run *after* an `insert_resource` that came before it, so an
+        // override set outside this chain would be quietly overwritten. Deciding
+        // it in the same place as the defaults it replaces is what keeps the two
+        // from disagreeing.
+        let start = cli::from_args();
+
         app.init_resource::<RoomFade>()
             .init_resource::<Inventory>()
             .init_resource::<CurrentAct>()
+            .insert_resource(StartRoom(start.map(|here| here.room)))
             .insert_resource(items::WorldItems::with_resting([
                 // The teddy starts on the basement floor; the player walks past
                 // it on the way down and has to double back to notice it. The
@@ -34,6 +51,14 @@ impl Plugin for GamePlugin {
             ]))
             .add_plugins((inventory::InventoryUiPlugin, npc::NpcPlugin))
             .add_systems(OnEnter(GameState::Game), ui::spawn_game_ui);
+
+        // The act the flag's room belongs to, after the `init_resource` above, so
+        // it wins. Without this a room in act 2 would open with `CurrentAct` still
+        // on act 1, and the concierge would be lit when the route would have found
+        // it dark.
+        if let Some(here) = start {
+            app.insert_resource(CurrentAct(here.act));
+        }
 
         app.add_systems(
             Update,

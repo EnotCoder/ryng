@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::scenes::game::StartRoom;
 use crate::state::GameState;
 
 #[derive(Component)]
@@ -56,10 +57,21 @@ pub fn splash_system(
     time: Res<Time>,
     mut timer: ResMut<SplashTimer>,
     mut next: ResMut<NextState<GameState>>,
+    start_room: Res<StartRoom>,
 ) {
     timer.0.tick(time.delta());
     if timer.0.is_finished() {
-        next.set(GameState::Intro);
+        // `--rooms` wants the room and nothing else, so the intro and the menu are
+        // exactly what it is skipping: straight to the game, with `spawn_game_ui`
+        // opening the room that was asked for.
+        //
+        // The splash stays either way. It is one second and it is what covers the
+        // first frame of asset loading, so dropping it would only add a flash.
+        next.set(if start_room.0.is_some() {
+            GameState::Game
+        } else {
+            GameState::Intro
+        });
     }
 }
 

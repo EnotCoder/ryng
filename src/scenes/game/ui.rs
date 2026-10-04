@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 
 use crate::UiScale;
-use crate::acts::{CurrentAct, default_act};
+use crate::acts::{ActId, CurrentAct, default_act};
 use crate::buttons;
 use crate::scenes::fade::{RoomFade, spawn_fade_overlay};
-use crate::scenes::game::rooms::data::{all_paths, room_def};
+use crate::scenes::game::StartRoom;
+use crate::scenes::game::rooms::data::{act_of, all_paths, room_def};
 use crate::scenes::game::rooms::{
     components::{Room, RoomTitle},
     spawn::spawn_room,
@@ -15,6 +16,11 @@ use crate::state::GameState;
 // The full-screen picture behind the room. Same art and scale as the menu and
 // intro backdrops, so moving between scenes does not change it.
 const BACKDROP_SCALE: f32 = 3.0;
+
+/// Behind the room picture, which sits at z 0 as a child of `Room`. Only the
+/// backdrop needs a layer of its own: nothing else is ever drawn at z 0 in this
+/// scene, so this is the one z below zero in the game.
+pub(crate) const BACKDROP_Z: f32 = -1.0;
 
 // Room HUD layout, authored against `DESIGN_HEIGHT` and multiplied by `UiScale`
 // so the proportions survive a resize. The caption sits top-left, the carousel
@@ -54,12 +60,18 @@ pub fn spawn_game_ui(
     ui_scale: Res<UiScale>,
     mut fade: ResMut<RoomFade>,
     mut current_act: ResMut<CurrentAct>,
+    start_room: Res<StartRoom>,
 ) {
     // `UiScale` itself, not the bare f32, so the `px`/`font` helpers can be used;
     // `s.0` is passed on to the button helpers, which take the raw scale.
     let s = *ui_scale;
     *fade = RoomFade::default();
-    current_act.0 = crate::acts::ActId::ActOne;
+    // Act one, unless `--rooms` put us somewhere that belongs to another one -
+    // otherwise `room_def` below would be asked about the room under the wrong
+    // act, and the concierge is the one room where that changes the answer.
+    current_act.0 = start_room
+        .0
+        .map_or(ActId::ActOne, |room| act_of(room).unwrap_or(ActId::ActOne));
 
     commands
         .spawn((
@@ -156,15 +168,29 @@ pub fn spawn_game_ui(
             );
         });
 
-    let start_room = default_act().start_room;
+    // `--rooms` names the room to open in; without it the game opens where the
+    // current act opens, which is what it always did.
+    let start_room = start_room
+        .0
+        .unwrap_or_else(|| default_act().start_room);
     let def = room_def(start_room, current_act.0);
     let handles: Vec<Handle<Image>> = all_paths().map(|path| asset_server.load(path)).collect();
     spawn_room(&mut commands, &asset_server, def, Vec3::ZERO);
 
+    // The blurred backdrop behind the room. Below the room picture, which is a
+    // child of `Room` and therefore draws at whatever z that child sits at - z 0.
+    // Spawning this *after* the room and giving it the same z left the two tied,
+    // and the tie is won by whichever was spawned last, so the backdrop went over
+    // the room and the player looked at `main_fon.png` with the inventory on top.
+    //
+    // It was invisible before only because the menu and the intro both spawn their
+    // own backdrop and die on the way out; nothing else had ever drawn a room and
+    // this at the same time. `--rooms` made the path reachable directly, which is
+    // where it showed up.
     commands.spawn((
         Sprite::from_image(asset_server.load("tex/main_fon.png")),
         Transform {
-            translation: Vec3::new(0.0, 0.0, 0.0),
+            translation: Vec3::new(0.0, 0.0, BACKDROP_Z),
             scale: Vec3::new(BACKDROP_SCALE, BACKDROP_SCALE, 1.0),
             ..default()
         },

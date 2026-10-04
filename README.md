@@ -19,6 +19,36 @@ cargo test         # unit tests
 cargo clippy --all-targets
 ```
 
+### Starting in one room
+
+```sh
+cargo run -- --rooms 7              # by number, counting along the route
+cargo run -- --rooms ap_3           # by picture name
+cargo run -- --rooms "apartment 3"
+cargo run -- --rooms                # print every room, numbered
+```
+
+Skips the intro and the menu and opens in that room, which is the difference
+between two seconds and a minute per look at a layout. The one-second splash
+stays: it covers the first frame of asset loading.
+
+The number is the canonical form and the names are the convenience, because
+picture names break when a picture is renamed and a number only moves when a room
+is added earlier in the route. Names are matched against the path, the file name
+and the title, ignoring case and punctuation — so `ap_3`, `ap 3`, `AP_3` and
+`ap-3` are one room.
+
+**A name several rooms share is refused, not guessed.** Two rooms are called
+`Concierge` and three are called `Stairs`, and the difference between the two
+concierges is the whole point of that room, so the error lists the pictures it
+could have meant and those resolve unambiguously.
+
+The `--` is required: `cargo run --rooms 7` is rejected by cargo before the game
+starts, because it reads `--rooms` as a flag of its own.
+
+It is also the only way to reach the parked lobby on floor 2, which nothing in
+the game links to yet.
+
 ## What's in it
 
 - **Four states**, wired with Bevy's `States`: `Loading` -> `Intro` -> `Menu` -> `Game`
@@ -68,6 +98,7 @@ src/
 ├── state.rs         # GameState: Loading / Intro / Menu / Game
 ├── acts.rs          # Item, Inventory, ActId, Act
 ├── buttons/         # Button spawning, hover/press colour states, click reader
+├── cli.rs           # `--rooms`: start in one room, skip the intro and the menu
 └── scenes/
     ├── loading.rs   # Splash and the asset preload overlay
     ├── intro/       # Logo fall curve

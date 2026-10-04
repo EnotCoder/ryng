@@ -14,6 +14,7 @@
 //! The elevator beat therefore belongs to act 1: the fall is the end of the ride
 //! the player started in act 1, and `B_HALL` is what they arrive at.
 
+use crate::acts::ActId;
 use crate::scenes::sound::{Music, TransitionSound};
 
 use super::RoomDef;
@@ -31,8 +32,20 @@ use act_one::ROOMS as ACT_ONE;
 use act_three::ROOMS as ACT_THREE;
 use act_two::ROOMS as ACT_TWO;
 
-/// Every act's rows, in play order.
-pub(super) static ACTS: &[&[RoomDef]] = &[ACT_ONE, ACT_TWO, ACT_THREE];
+/// Every act's rows, in play order, each labelled with the act it belongs to.
+///
+/// The label is written out rather than inferred from the position, so adding an
+/// act is a new row here and nowhere else. A `match` on the index would have to
+/// decide what a fourth act is called, and `#[derive]`-ing an index into an
+/// `ActId` would quietly call it `ActThree`.
+///
+/// The order is still the player's route and still what `rooms()` flattens, so it
+/// is what the `--rooms` flag counts along.
+pub(super) static ACTS: &[(ActId, &[RoomDef])] = &[
+    (ActId::ActOne, ACT_ONE),
+    (ActId::ActTwo, ACT_TWO),
+    (ActId::ActThree, ACT_THREE),
+];
 
 /// The fallback for a path that is in no act: `room_def` hands this back rather
 /// than panicking, so a typo in a `p` constant lands the player somewhere rather
