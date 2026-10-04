@@ -34,6 +34,11 @@ use crate::state::GameState;
 
 use crate::scenes::game::ui::{spawn_speech_ui, update_speech_text, update_speech_visibility};
 
+use bevy::image::{
+    ImageLoaderSettings,
+    ImageSampler,
+};
+
 pub use data::NpcId;
 pub use data::display_name;
 use data::{npc, npcs};
@@ -183,7 +188,13 @@ pub(crate) fn spawn_npc_sprites(
                 RoomPart,
                 NpcSprite(id),
                 Sprite {
-                    image: asset_server.load(def.texture),
+                    image: 
+                        asset_server
+                            .load_builder()
+                            .with_settings(|settings: &mut ImageLoaderSettings| {
+                                settings.sampler = ImageSampler::nearest();
+                            })
+                            .load("tex/npc/granny.png"),
                     custom_size: Some(def.size),
                     ..default()
                 },
