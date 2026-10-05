@@ -1,6 +1,7 @@
 use bevy::ecs::system::SystemParam;
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::UiScale;
 use crate::acts::{Inventory, Item};
@@ -12,8 +13,8 @@ use crate::scenes::game::items::{
     spot_is_live, try_drop, try_take,
 };
 use crate::scenes::game::rooms::components::{
-    Hotspot, HotspotAction, HotspotDef, HotspotIcon, Room, RoomPart, RoomStory, RoomTitle,
-    RoomVariantIndex, RoomVariants,
+    Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room,
+    RoomPart, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
 };
 use crate::scenes::game::rooms::data::RoomDef;
 use crate::scenes::game::rooms::spawn::spawn_room_content;
@@ -69,6 +70,122 @@ const ICON_BLINK_SPEED: f32 = std::f32::consts::TAU / ICON_BLINK_PERIOD;
 /// the other half.
 const ALPHA_AMPLITUDE: f32 = 0.5;
 const ALPHA_OFFSET: f32 = 0.5;
+
+/// How long one full brighten-dim of the hover outline takes.
+///
+/// Slower than the icon's 1.6s blink on purpose. The icon is ambient - it says
+/// "there is something here" and nobody is looking at it. The outline answers a
+/// direct question, "is this the one", and something that pulses that hard while
+/// the pointer rests on it is tiring rather than reassuring.
+const OUTLINE_PULSE_PERIOD: f32 = 2.2;
+const OUTLINE_PULSE_SPEED: f32 = std::f32::consts::TAU / OUTLINE_PULSE_PERIOD;
+
+/// The outline's brightness while hovered, and while fading it back in.
+///
+/// Both bounds are well above what looks reasonable in isolation. The outline is
+/// white over photographic art, so what matters is the contrast against whatever
+/// is behind it: at 0.25 the bar measured 0.07 against a light door, which is
+/// invisible in practice. 0.45 is the dimmest point of the pulse and it still
+/// clears a white door; 0.95 is the brightest without ever reaching full white,
+/// which would read as a solid object rather than as a highlight.
+const OUTLINE_ALPHA_MIN: f32 = 0.45;
+const OUTLINE_ALPHA_MAX: f32 = 0.95;
+
+/// How fast the outline fades in and out, in seconds.
+///
+/// Not instant in either direction: appearing in a single frame is a flash, and
+/// the whole point is to be calmer than the blinking icon. It also means moving the
+/// pointer between two doors cross-fades rather than blinking twice.
+const OUTLINE_FADE_SECONDS: f32 = 0.12;
+
+/// The alpha an outline should be drawing at right now.
+///
+/// Split out because it is the one piece of this feature with a rule in it: the
+/// pulse is scaled by how far the fade has got, so a fading outline dims as it goes
+/// instead of pulsing at full strength while invisible.
+pub(super) fn outline_alpha(elapsed: f32, fade: f32) -> f32 {
+    let phase = (elapsed * OUTLINE_PULSE_SPEED).sin();
+    let swing = OUTLINE_ALPHA_MIN
+        + phase
+            * ((OUTLINE_ALPHA_MAX - OUTLINE_ALPHA_MIN) / 2.0)
+            + (OUTLINE_ALPHA_MAX - OUTLINE_ALPHA_MIN) / 2.0;
+    swing * fade.clamp(0.0, 1.0)
+}
+
+/// How far each outline's fade has got, and where it was last seen.
+///
+/// A resource rather than a component on the bars: the fade has to survive the
+/// bars being despawned and rebuilt, which happens every time the carousel flips a
+/// variant, and re-deriving it per frame would make the outline snap instead of
+/// fading when the player moves the pointer between two doors.
+#[derive(Resource, Default)]
+pub struct OutlineFades(HashMap<Entity, Fade>);
+
+/// One outline's fade, and the phase offset it pulses on.
+#[derive(Clone, Copy)]
+struct Fade {
+    current: f32,
+    /// A fixed offset per entity, so two doors under the pointer are not lit in
+    /// lockstep. Derived from the entity index rather than kept as a resource: it
+    /// only has to differ between doors, not be meaningful.
+    phase: f32,
+}
+
+/// Kept as a resource rather than a component on the bars, so a fade survives the
+/// carousel rebuilding them; see [`OutlineFades`].
+pub fn hover_outline_system(
+    time: Res<Time>,
+    mut fades: ResMut<OutlineFades>,
+    // The hotspots, which is where `Hovered` lives: bevy_picking writes it there,
+    // and it is the hotspot that is hovered, not its bars.
+    hotspots: Query<(Entity, &Hovered), With<Hotspot>>,
+    // The bars themselves, plus their parent, so a change to one hotspot reaches
+    // all four of its bars. The entity is not needed: the parent identifies the
+    // hotspot, which is what the system keys the fade on.
+    mut bars: Query<(&ChildOf, &mut Sprite, &mut Visibility), With<HotspotOutline>>,
+) {
+    let delta = time.delta_secs();
+    let step = (delta / OUTLINE_FADE_SECONDS).clamp(0.0, 1.0);
+
+    // Drop fades for hotspots that are gone, so the map does not grow for the
+    // whole session as the player walks the game.
+    let live: HashSet<Entity> = hotspots.iter().map(|(entity, _)| entity).collect();
+    fades.0.retain(|hotspot, _| live.contains(hotspot));
+
+    for (hotspot, hovered) in &hotspots {
+        let wanted = if hovered.get() { 1.0 } else { 0.0 };
+        let fade = fades
+            .0
+            .entry(hotspot)
+            .or_insert_with(|| Fade {
+                // Starts visible only if it is already hovered, so an outline does
+                // not fade up from nothing on the frame the pointer arrives.
+                current: wanted,
+                phase: hotspot.index().index() as f32 * 0.7,
+            });
+
+        if (fade.current - wanted).abs() > f32::EPSILON {
+            fade.current += (wanted - fade.current) * step;
+        } else {
+            fade.current = wanted;
+        }
+
+        let visible = fade.current > 0.01;
+        let alpha = outline_alpha(time.elapsed_secs() + fade.phase, fade.current);
+
+        for (parent, mut sprite, mut visibility) in &mut bars {
+            if parent.parent() != hotspot {
+                continue;
+            }
+            *visibility = if visible {
+                Visibility::Visible
+            } else {
+                Visibility::Hidden
+            };
+            sprite.color = OUTLINE_COLOR.with_alpha(alpha);
+        }
+    }
+}
 
 pub fn idle_breathe_system(time: Res<Time>, mut rooms: Query<&mut Transform, With<Room>>) {
     let t = time.elapsed_secs() * BREATH_SPEED;

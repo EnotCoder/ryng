@@ -66,6 +66,9 @@ the game links to yet.
 - **Hotspots**: `hop!` an ordinary door, `gated!` one that spends a single item,
   `locked!` one that needs a set of items carried but not spent, `take!` / `drop!`
   for items on the floor
+- **Hover outline**: pointing at a hotspot draws a white frame around it, pulsing
+  gently so it reads as a highlight rather than as part of the picture. Four bars
+  rather than a texture, because every row in the table has its own size
 - **Inventory** of four slots with an active slot; doors that need an item only
   open when it is the one selected
 - **Six items**, each with one icon path and one slot texture table entry

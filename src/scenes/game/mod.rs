@@ -36,6 +36,9 @@ impl Plugin for GamePlugin {
         app.init_resource::<RoomFade>()
             .init_resource::<Inventory>()
             .init_resource::<CurrentAct>()
+            // The hover outline fades between states rather than snapping, so it
+            // needs somewhere to keep how far along it is between frames.
+            .init_resource::<systems::OutlineFades>()
             .insert_resource(StartRoom(start.map(|here| here.room)))
             .insert_resource(items::WorldItems::with_resting([
                 // The teddy starts on the basement floor; the player walks past
@@ -78,6 +81,10 @@ impl Plugin for GamePlugin {
                 ui::update_room_label,
                 systems::idle_breathe_system,
                 systems::blink_hotspot_icons,
+                // After the hotspot systems, so an outline that is already lit when
+                // the player arrives at a door does not get its first frame stolen
+                // by the click that got them there.
+                systems::hover_outline_system,
                 crate::scenes::sound::background_music_system,
             )
                 .chain()

@@ -17,6 +17,40 @@ pub struct Hotspot;
 #[derive(Component)]
 pub struct HotspotIcon;
 
+/// One of the four bars that draw a hotspot's outline.
+///
+/// A component rather than a tag on the hotspot itself, because the bars are
+/// children: they ride along with the room's breathing motion and are despawned
+/// with the room, and they are positioned relative to the hotspot rather than in
+/// world coordinates.
+#[derive(Component)]
+pub struct HotspotOutline;
+
+/// How thick the hover outline is drawn, in design pixels.
+///
+/// 6 rather than the 5 this started at: at 1:1 that is a 5px hairline, and the
+/// room art is photographic, so a thin bright line on it is easy to lose against
+/// the clutter - the first version was measurably invisible over a light door. The
+/// bars overlap the hotspot's own rectangle by this much on every side, so the
+/// outline traces the edge of the clickable area rather than sitting just inside
+/// it.
+pub const HOTSPOT_OUTLINE_THICKNESS: f32 = 6.0;
+
+/// The white of the hover outline. A warm white would blend into the yellow lamps
+/// in the rooms and into the white signage; plain white reads against everything
+/// in the game.
+pub const OUTLINE_COLOR: Color = Color::WHITE;
+
+/// Above the hotspot it belongs to, which is picked at [`HOTSPOT_Z`], and below
+/// an NPC's click target, which is the whole reason the ordering is a constant
+/// rather than an inline `0.1`: the concierge's way out is a hotspot and the
+/// granny stands in front of it, so an outline drawn over her target would eat
+/// the clicks meant for her. See [`crate::scenes::game::npc`].
+///
+/// The bars are `Pickable::IGNORE` anyway, so they cannot take a click; this is
+/// about what they cover, not what they receive.
+pub const HOTSPOT_OUTLINE_Z: f32 = 1.25;
+
 /// The size the blinking arrow is drawn at, whatever the hotspot underneath it
 /// happens to be. It used to be derived from the hotspot rectangle, which made
 /// the arrow grow with every door that was resized and gave it a different size

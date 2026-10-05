@@ -149,6 +149,15 @@ impl Default for SpeechTimer {
 const NPC_SPRITE_Z: f32 = 0.6;
 const NPC_TARGET_Z: f32 = 1.5;
 
+/// The real number rather than a copy of it, for the test that checks the hover
+/// outline is drawn underneath this layer - see
+/// `game::tests::the_outline_is_drawn_below_an_npcs_click_target`.
+///
+/// A literal in the test would pass whatever both numbers happened to be, and the
+/// thing being asserted is that these two layers are in this order.
+#[cfg(test)]
+pub(crate) const NPC_TARGET_Z_FOR_TESTS: f32 = NPC_TARGET_Z;
+
 /// Invisible, but it has to be a sprite for the picking backend to see it.
 const TARGET_COLOR: Color = Color::srgba(0.0, 0.0, 0.0, 0.0);
 
