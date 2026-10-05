@@ -11,7 +11,7 @@ use state::GameState;
 
 pub const DEBUG_SHOW_HOTSPOTS: bool = false;
 
-pub const DESIGN_HEIGHT: f32 = 720.0;
+pub const DESIGN_HEIGHT: f32 = 700.0;
 
 /// Half-width and half-height of the visible frame, in the same units as room
 /// art. The camera is `FixedVertical` at `DESIGN_HEIGHT`, so this is fixed.

@@ -29,7 +29,7 @@ pub(super) const STAIRS_SHOT: RoomVariant = shot!(
     p::F1_STAIRS,
     "1st floor - stairs",
     "The stairs are open. Climb up.",
-    &[hop!(p::STAIRS_1, 250.0, 0.0)]
+    &[hop!(p::STAIRS_1, 200.0, 30.0, Vec2::new(300.0, 450.0))]
 );
 
 pub(super) static ROOMS: &[RoomDef] = &[
@@ -58,7 +58,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
         "Go through the concierge room,\nshowing your pass from the inventory.",
         TransitionSound::NextRoomWithOpenDoor,
         Music::Indoors,
-        &[gated!(p::F1_HALL, 0.0, 0.0, Item::Pass)]
+        &[gated!(p::F1_HALL, 0.0, 50.0, Vec2::new(400.0, 400.0), Item::Pass)]
     ),
     // After the basement loop: nobody is on duty, the lights are off, the lift
     // is dead.
@@ -78,7 +78,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
             p::F1_HALL,
             "Hall - 1st floor",
             "Choose: take the elevator or\nwalk up the stairs.",
-            &[hop!(p::ELEVATOR, 0.0, 0.0)]
+            &[hop!(p::ELEVATOR, 0.0, 25.0, Vec2::new(250.0, 465.0))]
         ),
         STAIRS_SHOT
     ),

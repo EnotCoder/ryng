@@ -49,6 +49,15 @@ macro_rules! gated {
             require: &[],
         }
     };
+    ($target:expr, $x:expr, $y:expr, $size:expr, $item:expr) => {
+        HotspotDef {
+            action: HotspotAction::GoToRoom($target),
+            pos: Vec2::new($x, $y),
+            size: $size,
+            gate: Some($item),
+            require: &[],
+        }
+    };
 }
 pub(crate) use gated;
 
