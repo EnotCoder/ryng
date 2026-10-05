@@ -34,11 +34,6 @@ use crate::state::GameState;
 
 use crate::scenes::game::ui::{spawn_speech_ui, update_speech_text, update_speech_visibility};
 
-use bevy::image::{
-    ImageLoaderSettings,
-    ImageSampler,
-};
-
 pub use data::NpcId;
 pub use data::display_name;
 use data::{npc, npcs};
@@ -188,13 +183,19 @@ pub(crate) fn spawn_npc_sprites(
                 RoomPart,
                 NpcSprite(id),
                 Sprite {
-                    image: 
-                        asset_server
-                            .load_builder()
-                            .with_settings(|settings: &mut ImageLoaderSettings| {
-                                settings.sampler = ImageSampler::nearest();
-                            })
-                            .load("tex/npc/granny.png"),
+                    // Straight `load`, and `def.texture` rather than a literal:
+                    // the sampler is not set here. It lives in the `.meta` beside
+                    // the picture, which is the only place it should - see
+                    // `npc::tests::the_sampler_does_not_depend_on_who_loaded_first`.
+                    //
+                    // This used to ask for `nearest` at the call site, and that
+                    // worked or not depending on which of the two loads of this
+                    // path ran first: the preload in `spawn_game_ui` and this one
+                    // both asked for the same file, and Bevy returns the existing
+                    // handle without reloading, so the winner set the sampler for
+                    // everyone. Plain `load` carries no settings at all, so the
+                    // `.meta` decides for both callers.
+                    image: asset_server.load(def.texture),
                     custom_size: Some(def.size),
                     ..default()
                 },

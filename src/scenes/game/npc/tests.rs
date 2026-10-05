@@ -471,3 +471,176 @@ fn she_is_a_child_of_the_room() {
         assert_eq!(parent, Some(room), "she was not parented to the room",);
     }
 }
+
+// ------------------------------------------------------------ the .meta file
+
+/// Every NPC picture carries a `.meta` beside it.
+///
+/// Not "the sampler is right" - that is what `the_sampler_is_read_from_the_meta`
+/// below checks. This one only checks that a *new* character cannot be added
+/// without the file, because the sampler living in the meta is only correct if the
+/// meta is there: a missing one silently falls back to the default sampler and the
+/// character comes out filtered differently from everyone else.
+///
+/// The paths come from the table rather than being listed here, so this fails when
+/// a character is added, which is the moment it would otherwise be forgotten.
+#[test]
+fn every_npc_picture_has_a_meta_file_beside_it() {
+    for def in data::npcs() {
+        let picture = std::path::Path::new("assets").join(def.texture);
+        let meta = picture.with_extension(format!(
+            "{}meta",
+            picture
+                .extension()
+                .map(|ext| format!("{}.", ext.to_string_lossy()))
+                .unwrap_or_default()
+        ));
+        assert!(
+            meta.exists(),
+            "{} has no .meta beside it, so its sampler comes from the global \
+             default rather than from the file",
+            picture.display()
+        );
+    }
+}
+
+/// The `.meta` is what sets the sampler, and it says `nearest`.
+///
+/// This is the behaviour the whole arrangement exists for: the setting is a
+/// property of the file rather than of whichever `load` call happened to arrive
+/// first. `ImageSampler` is not `PartialEq`, so it is matched on - `Descriptor`
+/// with nearest min/mag is what `ImageSampler::nearest()` builds.
+#[test]
+fn the_sampler_is_read_from_the_meta() {
+    use bevy::image::{ImageFilterMode, ImageSampler};
+
+    let meta = std::fs::read_to_string("assets/tex/npc/granny.png.meta")
+        .expect("a .meta beside the picture");
+
+    // Matched on rather than parsed: the point is that the file says this, not
+    // that it deserialises into a particular struct, and a substring keeps the
+    // test readable next to a RON file nobody looks at.
+    assert!(
+        meta.contains("mag_filter: Nearest"),
+        "the .meta does not ask for nearest mag filtering:\n{meta}"
+    );
+    assert!(
+        meta.contains("min_filter: Nearest"),
+        "the .meta does not ask for nearest min filtering:\n{meta}"
+    );
+    // And it must still name the image loader, or Bevy has nothing to attach the
+    // settings to and falls back to the defaults with no error at all.
+    assert!(
+        meta.contains("ImageLoader"),
+        "the .meta does not name the image loader:\n{meta}"
+    );
+
+    // And the enum form is what the engine expects for a custom sampler.
+    assert!(
+        meta.contains("sampler: Descriptor("),
+        "the .meta is not setting a custom sampler:\n{meta}"
+    );
+
+    // Guard the two claims above against a silent drift in Bevy's own naming: if
+    // `ImageSampler::nearest()` stops being nearest-min-and-mag, the file above is
+    // no longer describing it.
+    let nearest = ImageSampler::nearest();
+    let bevy::image::ImageSampler::Descriptor(descriptor) = nearest else {
+        panic!("ImageSampler::nearest() is no longer a Descriptor");
+    };
+    assert_eq!(descriptor.mag_filter, ImageFilterMode::Nearest);
+    assert_eq!(descriptor.min_filter, ImageFilterMode::Nearest);
+}
+
+/// The two load sites for an NPC picture have to agree.
+///
+/// This is the bug itself. `spawn_game_ui` preloads every picture through
+/// `all_paths()` with a plain `load`, and `spawn_npc_sprites` loads the same
+/// picture again. Bevy documents that a second load of a path already in flight
+/// returns the existing handle rather than reloading it, so *whichever call ran
+/// first set the sampler for both* - and the sprite's own `nearest` was ignored
+/// whenever the preload got there first.
+///
+/// Asserting on the table and on the sprite's handle rather than on the two call
+/// sites is what makes this meaningful: it checks that both ends end up pointing
+/// at one asset, which is the property that broke.
+#[test]
+fn the_sampler_does_not_depend_on_who_loaded_first() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
+        .insert_resource(CurrentAct(ActId::ActOne))
+        .add_systems(Update, super::spawn_npc_sprites);
+
+    let def = crate::scenes::game::rooms::data::room_def(data::GRANNY.room, ActId::ActOne);
+    app.world_mut().spawn((Room, def, RoomPart));
+    app.update();
+
+    let world = app.world_mut();
+    let mut sprites = world.query::<&Sprite>();
+    let handle = sprites
+        .iter(world)
+        .next()
+        .expect("she spawned")
+        .image
+        .clone();
+
+    // The preload's view of the same path, taken the way `spawn_game_ui` takes it.
+    let server = world.resource::<AssetServer>().clone();
+    let preloaded = server.load(data::GRANNY.texture);
+
+    assert_eq!(
+        handle, preloaded,
+        "the sprite and the preload are different assets for one path, so the \
+         sampler is being decided by whichever load won"
+    );
+}
+
+/// The `.meta` parses into the settings Bevy expects, with `nearest` in them.
+///
+/// The test above reads the file as text, which proves the words are there and
+/// nothing about whether Bevy can read the file. This one puts the bytes through
+/// Bevy's own deserializer, so a wrong format, an unknown field, or a field that
+/// stopped round-tripping all fail here.
+///
+/// It reads the bytes and deserializes directly rather than loading the asset,
+/// because loading is asynchronous and the IO pool does not run under
+/// `cargo test` - an earlier version of this test polled `load_state` and sat in
+/// `Loading` forever, for every picture, `.meta` or not.
+#[test]
+fn the_meta_parses_into_image_loader_settings() {
+    let path = format!("assets/{}.meta", data::GRANNY.texture);
+    let bytes = std::fs::read(&path).unwrap_or_else(|problem| {
+        panic!("cannot read {path}: {problem}");
+    });
+
+    // The same deserialization the asset server does when it reads a loader's
+    // meta: `AssetMeta::<ImageLoader, ()>`, whose `asset` field is exactly the
+    // `AssetAction::Load { loader, settings }` this file has to express.
+    let meta: bevy::asset::meta::AssetMeta<bevy::image::ImageLoader, ()> =
+        bevy::asset::meta::AssetMeta::deserialize(&bytes).unwrap_or_else(|problem| {
+            panic!("Bevy could not read {path}: {problem}");
+        });
+
+    let bevy::asset::meta::AssetAction::Load { settings, .. } = meta.asset else {
+        panic!("{path} does not say `Load`");
+    };
+
+    // And the settings have to come back out with the sampler we asked for.
+    let bevy::image::ImageSampler::Descriptor(descriptor) = &settings.sampler else {
+        panic!(
+            "{path} deserialized, but the sampler is still the default - the \
+             settings were dropped rather than applied"
+        );
+    };
+    assert_eq!(
+        descriptor.mag_filter,
+        bevy::image::ImageFilterMode::Nearest,
+        "the .meta parsed, but mag filtering is not nearest"
+    );
+    assert_eq!(
+        descriptor.min_filter,
+        bevy::image::ImageFilterMode::Nearest,
+        "the .meta parsed, but min filtering is not nearest"
+    );
+}
