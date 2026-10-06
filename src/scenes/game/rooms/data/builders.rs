@@ -73,6 +73,23 @@ macro_rules! shot {
 }
 pub(crate) use shot;
 
+/// The frames of a shot-to-shot flip, in play order.
+///
+/// `$dir` is a literal rather than a `p` constant because `concat!` will not take
+/// one, and twelve constants per animation is worse than naming the folder once.
+/// The folder is therefore not in `p` either - the paths written here are the only
+/// thing that names it, and `every_texture_exists` reads the same table.
+///
+/// Written in the direction the art was drawn in, from the first shot of the room
+/// towards the last. The flip plays the list backwards when the player goes the
+/// other way, so there is one list and not two.
+macro_rules! flip {
+    ($dir:literal, $($frame:literal),+ $(,)?) => {
+        Some(&[$(concat!($dir, "/", $frame)),+])
+    };
+}
+pub(crate) use flip;
+
 /// One picture, one variant, player-driven. Covers most of the rooms.
 macro_rules! room {
     ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, $hotspots:expr) => {
@@ -83,6 +100,7 @@ macro_rules! room {
             auto_next: None,
             variants: &[shot!($path, $title, $story, $hotspots)],
             next_act: None,
+            flip: None,
         }
     };
 }
@@ -98,6 +116,7 @@ macro_rules! beat {
             auto_next: $auto_next,
             variants: &[shot!($path, $title, $story, &[])],
             next_act: None,
+            flip: None,
         }
     };
 }
@@ -113,13 +132,36 @@ macro_rules! chapter {
             auto_next: $auto_next,
             variants: &[shot!($path, $title, $story, &[])],
             next_act: Some($act),
+            flip: None,
         }
     };
 }
 pub(crate) use chapter;
 
-/// Two or more pictures the player flips between.
+/// Two or more pictures the player flips between, cut straight to the next one.
+///
+/// The form that takes a [`flip!`] plays that pan between the shots instead of
+/// cutting. The list belongs to the room whose first and last shots the art runs
+/// between, because that is the direction it is played in.
+///
+/// The flip arm comes first and matches the `flip` name itself rather than
+/// wrapping the list in brackets. `[..]` is a perfectly good expression, so a
+/// bracketed form would be swallowed by the plain arm as one more `shot!` and build
+/// a room whose last "picture" is the animation; and an `expr` fragment cannot be
+/// followed by `]` at all, so the bracketed arm would never match in the first
+/// place. Matching the name is what actually tells the two apart.
 macro_rules! carousel {
+    ($sound:expr, $music:expr, flip ! ($dir:literal, $($frame:literal),+ $(,)?), $($variant:expr),+ $(,)?) => {
+        RoomDef {
+            sound: $sound,
+            music: $music,
+            interactive: true,
+            auto_next: None,
+            variants: &[$($variant),+],
+            next_act: None,
+            flip: flip!($dir, $($frame),*),
+        }
+    };
     ($sound:expr, $music:expr, $($variant:expr),+ $(,)?) => {
         RoomDef {
             sound: $sound,
@@ -128,6 +170,7 @@ macro_rules! carousel {
             auto_next: None,
             variants: &[$($variant),+],
             next_act: None,
+            flip: None,
         }
     };
 }

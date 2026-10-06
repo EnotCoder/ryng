@@ -73,6 +73,10 @@ impl Plugin for GamePlugin {
                 fade_in_system,
                 systems::game_button_system,
                 systems::carousel_system,
+                // After the carousel system, because that is what starts a flip: the
+                // room carries `RoomFlip` from the moment the arrow is pressed, and
+                // this only has something to advance once it does.
+                systems::room_flip_system,
                 systems::game_hotspot_system,
                 // After the hotspot systems, so a pickup despawns the sprite
                 // and clears the spot in the same frame it is taken.

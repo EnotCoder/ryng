@@ -10,7 +10,7 @@ use crate::scenes::game::rooms::{
     components::{Room, RoomTitle},
     spawn::spawn_room,
 };
-use crate::scenes::loading::spawn_loading_overlay;
+use crate::scenes::loading::{PreloadedImages, spawn_loading_overlay};
 use crate::state::GameState;
 
 // The full-screen picture behind the room. Same art and scale as the menu and
@@ -61,6 +61,7 @@ pub fn spawn_game_ui(
     mut fade: ResMut<RoomFade>,
     mut current_act: ResMut<CurrentAct>,
     start_room: Res<StartRoom>,
+    mut preloaded: ResMut<PreloadedImages>,
 ) {
     // `UiScale` itself, not the bare f32, so the `px`/`font` helpers can be used;
     // `s.0` is passed on to the button helpers, which take the raw scale.
@@ -190,6 +191,11 @@ pub fn spawn_game_ui(
         .unwrap_or_else(|| default_act().start_room);
     let def = room_def(start_room, current_act.0);
     let handles: Vec<Handle<Image>> = all_paths().map(|path| asset_server.load(path)).collect();
+    // Held before the overlay is given them, so the two have independent lifetimes:
+    // the overlay despawns as soon as the last picture arrives, and the resource
+    // outlives it. See `PreloadedImages` - a picture nothing holds a handle to is a
+    // picture the carousel pan cannot draw.
+    *preloaded = PreloadedImages::hold(handles.clone());
     spawn_room(&mut commands, &asset_server, def, Vec3::ZERO);
 
     // The blurred backdrop behind the room. Below the room picture, which is a

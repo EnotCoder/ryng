@@ -84,6 +84,75 @@ pub struct RoomVariant {
     pub hotspots: &'static [HotspotDef],
 }
 
+/// How long one frame of a shot-to-shot flip stays on screen.
+///
+/// A per-frame time rather than a total, because the art is a pan of fixed length:
+/// 12 frames at 20fps is 0.6s. Slower than [`crate::scenes::fade::FADE_DURATION`]
+/// on purpose - the frames are motion-blurred, and cutting through them any faster
+/// turns the pan into a flicker.
+pub const FLIP_FRAME_SECONDS: f32 = 1.0 / 20.0;
+
+/// The pan from one shot of a room to the next, playing on the room while it runs.
+///
+/// Present only for as long as the frames are on screen: the carousel system reads
+/// its absence to decide the player may change shot again, and the flip system
+/// removes it the moment the destination shot is spawned. The outgoing shot's
+/// hotspots are already despawned, so a room mid-pan is a picture with nothing to
+/// click - which is what stops a click landing on a door the player is not looking
+/// at yet.
+#[derive(Component)]
+pub struct RoomFlip {
+    /// The frames, in the order the art was drawn: from the first shot towards the
+    /// last.
+    pub frames: &'static [&'static str],
+    /// The shot the player is heading for.
+    pub to: usize,
+    /// How many frames have been shown so far, the first one included.
+    shown: usize,
+    /// Which way the player went. The art runs from the first shot to the last, so
+    /// this alone decides whether the list plays forwards or backwards.
+    pub forward: bool,
+    /// Time left on the frame currently on screen.
+    pub timer: Timer,
+}
+
+impl RoomFlip {
+    /// Start a flip towards `to`, showing the first frame straight away.
+    pub fn new(frames: &'static [&'static str], to: usize, forward: bool) -> Self {
+        Self {
+            frames,
+            to,
+            shown: 0,
+            forward,
+            timer: Timer::from_seconds(FLIP_FRAME_SECONDS, TimerMode::Once),
+        }
+    }
+
+    /// The frame that belongs on screen now.
+    ///
+    /// Counted from whichever end the player set off from, so the two directions are
+    /// one list read from opposite ends and the art only has to exist once.
+    pub fn frame(&self) -> &'static str {
+        let index = if self.forward {
+            self.shown
+        } else {
+            self.frames.len() - 1 - self.shown
+        };
+        self.frames[index]
+    }
+
+    /// Show the next frame, or report that every frame has had its turn.
+    ///
+    /// Each frame gets its full slot before the next replaces it, the last one
+    /// included: landing on the same tick that showed it would skip the twelfth
+    /// frame, and the pan would stop one step short of where the art ends.
+    pub fn advance(&mut self) -> bool {
+        self.shown += 1;
+        self.timer.reset();
+        self.shown < self.frames.len()
+    }
+}
+
 #[derive(Component, Clone, Copy, PartialEq)]
 pub struct HotspotDef {
     pub action: HotspotAction,

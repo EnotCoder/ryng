@@ -71,9 +71,24 @@ pub(super) static ROOMS: &[RoomDef] = &[
         &[hop!(p::F1_HALL_DEAD, 0.0, 0.0)]
     ),
     // -- Hall ----------------------------------------------------------------
+    // The pan from the elevator to the stairs, drawn in two takes: with the lift
+    // working and with it boarded up. The two sets are the same pan and differ only
+    // in the first three frames, where the door the player is looking at is the one
+    // that matters - clean in the first, taped across in the second. The player
+    // walks this corridor twice and only the second time is it shut, so playing the
+    // wrong set would show a working lift to someone who has already seen it fall.
+    //
+    // Written in the direction the art runs, elevator to stairs. Going back towards
+    // the lift plays the same list from the other end, so there is one list and not
+    // two.
     carousel!(
         TransitionSound::NextRoom,
         Music::Indoors,
+        flip!(
+            "tex/rooms/floor_1/elevator_carusel_anim/work",
+            "1.png", "2.png", "3.png", "4.png", "5.png", "6.png",
+            "7.png", "8.png", "9.png", "10.png", "11.png", "12.png"
+        ),
         shot!(
             p::F1_HALL,
             "Hall - 1st floor",
@@ -85,6 +100,11 @@ pub(super) static ROOMS: &[RoomDef] = &[
     carousel!(
         TransitionSound::NextRoom,
         Music::Indoors,
+        flip!(
+            "tex/rooms/floor_1/elevator_carusel_anim/dont_work",
+            "1.png", "2.png", "3.png", "4.png", "5.png", "6.png",
+            "7.png", "8.png", "9.png", "10.png", "11.png", "12.png"
+        ),
         shot!(
             p::F1_HALL_DEAD,
             "Hall - 1st floor",

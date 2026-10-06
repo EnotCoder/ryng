@@ -4,16 +4,24 @@
 //! classic place for an off-by-one to hide: a room with one variant must not
 //! move, and an empty room must not divide by zero.
 
+use std::collections::HashSet;
+
 use bevy::prelude::*;
 
-use super::systems::{item_hotspot_visibility_system, step};
+use super::systems::{item_hotspot_visibility_system, room_flip_system, step};
 use crate::acts::{ActId, CurrentAct, Item};
 use crate::scenes::game::items::WorldItems;
 use crate::scenes::game::rooms::components::{
-    HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline,
+    HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room, RoomFlip,
+    RoomTitle, RoomVariantIndex,
 };
-use crate::scenes::game::rooms::data::{p, room_def};
-use crate::scenes::game::ui::CarouselDir;
+use crate::scenes::game::rooms::data::{RoomDef, p, room_def, rooms};
+use crate::scenes::game::ui::{CarouselDir, spawn_game_ui};
+use crate::scenes::fade::RoomFade;
+use crate::scenes::loading::PreloadedImages;
+use crate::scenes::game::StartRoom;
+use crate::scenes::game::rooms::data::all_paths;
+use crate::UiScale;
 
 /// Bevy validates a system's queries when the system first runs, and panics
 /// with B0001 if two of its parameters write the same component without being
@@ -664,5 +672,335 @@ fn the_spawned_bars_cover_the_hotspot_edges() {
             "a {size:?} hotspot is missing an edge: top={on_top} bottom={on_bottom} \
              left={on_left} right={on_right}",
         );
+    }
+}
+
+// -------------------------------------------------------------- the pan between shots
+
+/// Three frames standing in for the twelve, so a failure names a short list.
+const PAN: &[&str] = &["a/1.png", "a/2.png", "a/3.png"];
+
+/// The frames a room flips through, in order.
+///
+/// Takes the row by value: `RoomDef` is `Copy` and `room_def` hands one back
+/// rather than a reference into the table.
+fn pan_of(room: RoomDef) -> Vec<&'static str> {
+    room.flip.expect("this room has a pan").to_vec()
+}
+
+/// Every frame of a pan, in the order the player would see them.
+///
+/// The first frame is on screen before `advance` is ever called, so the walk starts
+/// there. `advance` returns false once the pan is over, which is what ends the loop
+/// - not the count.
+fn frames_seen(mut flip: RoomFlip) -> Vec<&'static str> {
+    let mut seen = vec![flip.frame()];
+    while flip.advance() {
+        seen.push(flip.frame());
+    }
+    seen
+}
+
+/// A pan must show every frame exactly once, in the order it was drawn.
+///
+/// The off-by-one this pins is the last frame: `advance` answers "is there another
+/// one after this", so a version that landed on the tick which *showed* the final
+/// frame would finish without ever displaying it, and the pan would stop one step
+/// short of the stairs.
+#[test]
+fn a_pan_shows_every_frame_once_in_order() {
+    let seen = frames_seen(RoomFlip::new(PAN, 1, true));
+
+    assert_eq!(
+        seen, PAN,
+        "the pan skipped or repeated a frame, so the room jumps mid-pan",
+    );
+}
+
+/// Going the other way is the same list read backwards.
+///
+/// One list serves both arrows, so the reverse pass is a second walk over the same
+/// array rather than a second set of files. Compared against the forward walk
+/// reversed, which also catches an index that runs off the front of the array - the
+/// backwards walk is the one that can go negative.
+#[test]
+fn a_pan_backwards_is_the_same_frames_in_reverse() {
+    let forwards = frames_seen(RoomFlip::new(PAN, 1, true));
+    let backwards = frames_seen(RoomFlip::new(PAN, 0, false));
+    let mut expected = forwards;
+    expected.reverse();
+
+    assert_eq!(
+        backwards, expected,
+        "the two directions do not show the same frames, so the pan jumps on the way back",
+    );
+    assert_eq!(
+        backwards.first(),
+        Some(&PAN[PAN.len() - 1]),
+        "a pan played backwards must start on the frame the art ends on",
+    );
+}
+
+/// The destination is fixed when the pan starts, so the room lands where the player
+/// asked to go rather than where the frames happen to end.
+#[test]
+fn a_pan_keeps_where_it_was_going() {
+    let flip = RoomFlip::new(PAN, 1, true);
+
+    assert_eq!(flip.to, 1, "the destination moved while the pan was playing");
+}
+
+// ------------------------------------------------------------ the table names them
+
+/// Both halls pan, and neither borrows the other's frames.
+///
+/// The two visits to this corridor are not the same moment: the first time the lift
+/// works and the second time it does not. Two folders exist for that reason, and
+/// the table is the only thing that keeps them apart - a room built from the same
+/// list twice would show a clean elevator door to a player who has already watched
+/// it fall, which is the whole ending of act 1.
+#[test]
+fn each_hall_flips_with_its_own_pan() {
+    let working = room_def(p::F1_HALL, ActId::ActOne);
+    let dead = room_def(p::F1_HALL_DEAD, ActId::ActOne);
+
+    let working_frames = pan_of(working);
+    let dead_frames = pan_of(dead);
+
+    assert!(
+        !working_frames.is_empty() && !dead_frames.is_empty(),
+        "a hall with no frames cuts instead of panning",
+    );
+    assert!(
+        working_frames.iter().all(|frame| !dead_frames.contains(frame)),
+        "the two halls share frames: {:?}",
+        working_frames
+            .iter()
+            .filter(|frame| dead_frames.contains(frame))
+            .collect::<Vec<_>>(),
+    );
+}
+
+/// The same number of frames both times, so the corridor does not change pace
+/// between visits.
+///
+/// The two pans are drawn to the same timing, and they only differ in the door. A
+/// different frame count in one of them means the art was re-exported and the
+/// difference is invisible here and very visible in the game.
+#[test]
+fn both_halls_pan_over_the_same_number_of_frames() {
+    let working = pan_of(room_def(p::F1_HALL, ActId::ActOne));
+    let dead = pan_of(room_def(p::F1_HALL_DEAD, ActId::ActOne));
+
+    assert_eq!(
+        working.len(),
+        dead.len(),
+        "one hall's pan is {} frames and the other's is {}, so the corridor changes \
+         speed between the two visits",
+        working.len(),
+        dead.len(),
+    );
+}
+
+/// Every frame of a pan comes from one folder.
+///
+/// The list is twelve literal paths written by hand, so a mistyped frame is the
+/// obvious mistake - and it would show up as one hard frame in the middle of a
+/// smooth pan rather than as anything a build would notice.
+#[test]
+fn a_pan_is_played_from_one_folder() {
+    for room in [p::F1_HALL, p::F1_HALL_DEAD] {
+        let def = room_def(room, ActId::ActOne);
+        let folders: HashSet<_> = pan_of(def)
+            .iter()
+            .map(|frame| frame.rsplit_once('/').map(|(dir, _)| dir))
+            .collect();
+
+        assert_eq!(
+            folders.len(),
+            1,
+            "the pan for {room} mixes folders: {:?}",
+            folders,
+        );
+    }
+}
+
+/// Only the two halls have a pan, and every other room still cuts.
+///
+/// A room with a single shot has nothing to pan between: given frames it would play
+/// them and land back where it started, which is a half-second of blurred corridor
+/// for no reason at all.
+#[test]
+fn only_a_room_with_shots_to_flip_has_a_pan() {
+    let mut with_pans = Vec::new();
+    for room in rooms() {
+        let Some(frames) = room.flip else {
+            continue;
+        };
+        with_pans.push(room.variants[0].path);
+        assert!(
+            !frames.is_empty(),
+            "{} has a pan with no frames in it",
+            room.variants[0].path,
+        );
+        assert!(
+            room.variants.len() > 1,
+            "{} has {} shot but a pan, so the pan lands back on the shot it started from",
+            room.variants[0].path,
+            room.variants.len(),
+        );
+    }
+
+    with_pans.sort();
+    assert_eq!(
+        with_pans,
+        vec![p::F1_HALL, p::F1_HALL_DEAD],
+        "a room gained or lost its pan",
+    );
+}
+
+/// The pan ends on the shot it was heading for, and hands the room back.
+///
+/// The component tests above pin which frames play; this one pins that the system
+/// puts them on the room and then takes them off again. Run against the real
+/// spawner and the real hall row, because the claim is about a room in a game and
+/// not about an array - a pan that played every frame and never landed would
+/// satisfy all of them.
+#[test]
+fn a_played_pan_lands_on_the_shot_and_clears_itself() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
+        .insert_resource(CurrentAct(ActId::ActOne));
+
+    let def = room_def(p::F1_HALL, ActId::ActOne);
+    let frames = pan_of(def);
+    let to = step(0, def.variants.len(), CarouselDir::Next).expect("the hall has a second shot");
+
+    // The spawner runs once and only once: run it every update and it puts a second
+    // room in the world, and every system that reads "the room" stops matching when
+    // there is more than one - which is a silent no-op, not a failure.
+    app.add_systems(
+        Update,
+        move |mut commands: Commands, asset_server: Res<AssetServer>, mut spawned: Local<bool>| {
+            if *spawned {
+                return;
+            }
+            *spawned = true;
+            crate::scenes::game::rooms::spawn::spawn_room(
+                &mut commands,
+                &asset_server,
+                def,
+                Vec3::ZERO,
+            );
+        },
+    );
+    app.add_systems(Update, room_flip_system);
+    app.update();
+
+    // Stand the pan up the way the carousel system does: the first frame on the room
+    // and the component naming where it is going.
+    let world = app.world_mut();
+    let room = world
+        .query_filtered::<Entity, With<Room>>()
+        .iter(world)
+        .next()
+        .expect("the hall spawned");
+    let first = world.spawn(Sprite::from_image(Handle::<Image>::default())).id();
+    world.entity_mut(first).set_parent_in_place(room);
+    world
+        .entity_mut(room)
+        .insert(RoomFlip::new(def.flip.unwrap(), to, true));
+
+    // Run the frames out. The timer is zeroed rather than the wall clock waited on:
+    // the pan is twelve frames at a twentieth of a second, and a test that sleeps for
+    // them is a test that fails on a loaded machine.
+    for step in 0..frames.len() + 1 {
+        app.update();
+        if step == frames.len() {
+            break;
+        }
+        let mut pans = app
+            .world_mut()
+            .query_filtered::<&mut RoomFlip, With<Room>>();
+        let world = app.world_mut();
+        for mut flip in pans.iter_mut(world) {
+            flip.timer = Timer::from_seconds(0.0, TimerMode::Once);
+        }
+    }
+
+    let world = app.world_mut();
+    assert!(
+        world.get::<RoomFlip>(room).is_none(),
+        "the pan finished but is still on the room, so the arrows stay dead forever",
+    );
+    assert_eq!(
+        world.get::<RoomVariantIndex>(room).map(|index| index.0),
+        Some(to),
+        "the pan ended on the wrong shot",
+    );
+    assert_eq!(
+        world.get::<RoomTitle>(room).map(|title| title.0),
+        Some(def.variants[to].title),
+        "the caption still names the shot the player left",
+    );
+}
+
+/// Every picture the game will show is still held once the game is open.
+///
+/// The loading overlay waits for the preload list and then despawns, and it used to
+/// hold the only handle to every picture in that list. Bevy drops an asset once
+/// nothing refers to it, so the whole list went back to being unloaded the moment
+/// the overlay disappeared.
+///
+/// Every room got away with that for as long as there was nothing to see, because a
+/// room change happens behind a fade and a fade covers a picture still on its way.
+/// The carousel pan has no fade over it: the arrow press swaps the shot for a frame
+/// that is not loaded, and what the player sees is the backdrop. So the handles have
+/// to outlive the overlay, and the only place that can be pinned is the resource.
+///
+/// Asserted on the real `spawn_game_ui`, because the claim is about what the running
+/// game holds rather than about what the table contains - `pan_frames_are_preloaded`
+/// already covers the table's half.
+#[test]
+fn the_preload_list_is_still_held_once_the_game_is_open() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
+        .init_resource::<PreloadedImages>()
+        .init_resource::<RoomFade>()
+        .insert_resource(UiScale(1.0))
+        .insert_resource(CurrentAct(ActId::ActOne))
+        .insert_resource(StartRoom(None))
+        // One update, no once-only condition: this is the only frame there is.
+        .add_systems(Update, spawn_game_ui);
+    app.update();
+
+    let world = app.world();
+    let server = world.resource::<AssetServer>();
+    let held: Vec<String> = world
+        .resource::<PreloadedImages>()
+        .handles()
+        .iter()
+        .filter_map(|handle| server.get_path(handle.id()).map(|path| path.to_string()))
+        .collect();
+
+    assert_eq!(
+        held.len(),
+        all_paths().count(),
+        "the game holds {} pictures and the table names {}, so the ones it does not \
+         hold will have to load when they are first shown",
+        held.len(),
+        all_paths().count(),
+    );
+
+    for room in [p::F1_HALL, p::F1_HALL_DEAD] {
+        for frame in room_def(room, ActId::ActOne).flip.unwrap() {
+            assert!(
+                held.iter().any(|path| path == frame),
+                "{frame} is in the table but nothing holds it, so the pan draws the \
+                 backdrop instead of the corridor",
+            );
+        }
     }
 }

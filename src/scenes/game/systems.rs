@@ -13,7 +13,7 @@ use crate::scenes::game::items::{
     spot_is_live, try_drop, try_take,
 };
 use crate::scenes::game::rooms::components::{
-    Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room,
+    Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomFlip,
     RoomPart, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
 };
 use crate::scenes::game::rooms::data::RoomDef;
@@ -28,6 +28,32 @@ use crate::state::GameState;
 /// with two: the game shows one picture at a time, and a room spawned while the
 /// previous one is still fading out is the only way to get more than one.
 type CurrentRoom<'w, 's> = Query<'w, 's, (Entity, &'static RoomDef), With<Room>>;
+
+/// The room being flipped between shots: which shot it is on, what the caption says,
+/// and the pan if one is playing.
+///
+/// One alias for both halves of the flip rather than a query each, because the two
+/// systems have to agree on one room: `carousel_system` starts the pan and
+/// `room_flip_system` finishes it, and two separately written queries would be free
+/// to drift onto different shapes for the same room.
+///
+/// `&mut` on the pan even for the system that only checks it: the systems are
+/// ordered and never run against the same room at once, so sharing the shape is
+/// worth more than the access each one happens to need.
+type FlippingRoom<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static RoomDef,
+        &'static mut RoomVariants,
+        &'static mut RoomVariantIndex,
+        &'static mut RoomTitle,
+        &'static mut RoomStory,
+        Option<&'static mut RoomFlip>,
+    ),
+    With<Room>,
+>;
 
 /// Item sprites: the picture of a thing lying on the floor.
 ///
@@ -290,21 +316,13 @@ pub fn carousel_system(
     clicks: buttons::ButtonQuery<CarouselArrow>,
     mut was_pressed: Local<HashSet<Entity>>,
     ui_scale: Res<UiScale>,
-    mut rooms: Query<
-        (
-            Entity,
-            &mut RoomVariants,
-            &mut RoomVariantIndex,
-            &mut RoomTitle,
-            &mut RoomStory,
-        ),
-        With<Room>,
-    >,
+    mut rooms: FlippingRoom,
     mut arrow_visibility: Query<&mut Visibility, With<CarouselArrow>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    let Ok((room, room_variants, mut variant_index, mut title, mut story)) = rooms.single_mut()
+    let Ok((room, def, room_variants, mut variant_index, mut title, mut story, flipping)) =
+        rooms.single_mut()
     else {
         return;
     };
@@ -319,9 +337,40 @@ pub fn carousel_system(
     }
 
     buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |arrow| {
+        // A pan owns the room while it plays. Pressing the other arrow mid-pan
+        // would either stack a second set of frames on the first or turn the
+        // corridor around halfway, and neither is something the player asked for;
+        // the arrows do nothing until the shot they were heading for has arrived.
+        if flipping.is_some() {
+            return;
+        }
         let Some(new_index) = step(variant_index.0, variant_count, arrow.0) else {
             return;
         };
+
+        // With frames drawn for this room, the shot does not change yet - the pan
+        // does, and `room_flip_system` finishes the job by landing on `new_index`.
+        // The title and story stay on the shot being left for the same reason: a
+        // caption naming a corridor the player is still walking towards is a lie
+        // for most of the pan.
+        if let Some(frames) = def.flip {
+            commands.entity(room).despawn_children();
+            commands.entity(room).with_children(|parent| {
+                let first = frames[0];
+                parent.spawn((RoomPart, Sprite::from_image(asset_server.load(first))));
+            });
+            // The art runs from the first shot towards the last, so `forward` is
+            // which end of it the player set off from - not which arrow was pressed.
+            // In a two-shot room those come out the same, but pressing next from the
+            // last shot wraps to the first, and that is a step backwards.
+            commands.entity(room).insert(RoomFlip::new(
+                frames,
+                new_index,
+                new_index > variant_index.0,
+            ));
+            return;
+        }
+
         variant_index.0 = new_index;
         let variant = room_variants.0[new_index];
         title.0 = variant.title;
@@ -330,6 +379,54 @@ pub fn carousel_system(
         commands.entity(room).with_children(|parent| {
             spawn_room_content(parent, &asset_server, &variant, true);
         });
+    });
+}
+
+/// Show the next frame of the pan the player started, then land on the shot.
+///
+/// The frames are children of the room like every other part of its picture, so
+/// they are despawned with it on a transition and a flip that is interrupted by the
+/// player walking out of the room takes its frames with it.
+pub fn room_flip_system(
+    mut rooms: FlippingRoom,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    time: Res<Time>,
+) {
+    let Ok((room, _, room_variants, mut variant_index, mut title, mut story, flipping)) =
+        rooms.single_mut()
+    else {
+        return;
+    };
+    let Some(mut flip) = flipping else {
+        return;
+    };
+
+    if !flip.timer.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    if flip.advance() {
+        let frame = flip.frame();
+        commands.entity(room).despawn_children();
+        commands.entity(room).with_children(|parent| {
+            parent.spawn((RoomPart, Sprite::from_image(asset_server.load(frame))));
+        });
+        return;
+    }
+
+    // Every frame has had its turn. `to` was fixed when the pan started, so this
+    // cannot land somewhere the player did not ask for even if the room has changed
+    // its mind about its shots in the meantime.
+    let index = flip.to;
+    variant_index.0 = index;
+    let variant = room_variants.0[index];
+    title.0 = variant.title;
+    story.0 = variant.story;
+    commands.entity(room).remove::<RoomFlip>();
+    commands.entity(room).despawn_children();
+    commands.entity(room).with_children(|parent| {
+        spawn_room_content(parent, &asset_server, &variant, true);
     });
 }
 

@@ -74,6 +74,14 @@ pub(crate) struct RoomDef {
     pub auto_next: Option<(&'static str, f32)>,
     pub variants: &'static [RoomVariant],
     pub next_act: Option<ActId>,
+    /// The pan played instead of a cut when the player flips between this room's
+    /// shots. `None` for a room with one shot and for a carousel that has no pan
+    /// drawn - a cut is the right answer there, not an animation of nothing.
+    ///
+    /// The list is the direction the art was drawn in, from the first shot towards
+    /// the last, and the flip plays it backwards when the player goes the other
+    /// way, so one list serves both arrows.
+    pub flip: Option<&'static [&'static str]>,
 }
 
 /// `act` is the act the player is currently in: the concierge asks for the pass
@@ -96,9 +104,18 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
 /// The NPC pictures are included: an NPC's texture is otherwise only asked for when
 /// the player walks into its room, which is exactly the moment the overlay is gone
 /// and the sprite would pop in over the fade.
+///
+/// The flip frames are included for the same reason and more sharply. They are
+/// asked for while the player is already standing in the room, one arrow press
+/// after the overlay has gone - and an arrow press is a click, so a frame that has
+/// not finished loading lands as a blank rectangle in the middle of the pan.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
     rooms()
-        .flat_map(|room| room.variants.iter())
-        .map(|variant| variant.path)
+        .flat_map(|room| {
+            room.variants
+                .iter()
+                .map(|variant| variant.path)
+                .chain(room.flip.unwrap_or(&[]).iter().copied())
+        })
         .chain(crate::scenes::game::npc::paths())
 }

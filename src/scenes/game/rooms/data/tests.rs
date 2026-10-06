@@ -433,3 +433,26 @@ fn walk_assets(dir: &str, out: &mut Vec<String>) {
         }
     }
 }
+
+/// The pan frames are preloaded like any other picture.
+///
+/// A frame that has not finished loading when the arrow is pressed draws nothing,
+/// and the room at that moment is nothing but that frame - the real picture and its
+/// hotspots are already despawned. The player would get the backdrop instead of a
+/// pan, once per visit, and no amount of waiting would fix it because the wait is
+/// what triggered it. So the frames have to be in the same list the loading overlay
+/// waits on.
+#[test]
+fn pan_frames_are_preloaded() {
+    let paths: Vec<_> = all_paths().collect();
+
+    for room in [p::F1_HALL, p::F1_HALL_DEAD] {
+        let def = room_def(room, ActId::ActOne);
+        for frame in def.flip.unwrap() {
+            assert!(
+                paths.contains(frame),
+                "{frame} is not preloaded, so it draws nothing when the pan reaches it",
+            );
+        }
+    }
+}

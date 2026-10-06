@@ -36,6 +36,7 @@ pub(super) static ROOMS: &[RoomDef] = &[
             ]
         )],
         next_act: Some(ActId::ActThree),
+        flip: None,
     },
     // The corridor: the way back to the hall is dead centre, the left-hand door
     // opens into Apartment 3, and the upper panel of the black door is the one

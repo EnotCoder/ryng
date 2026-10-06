@@ -9,6 +9,41 @@ pub struct LoadingOverlay {
     fade: Option<Timer>,
 }
 
+/// A handle to every picture the game will ever show, for as long as it is running.
+///
+/// The overlay waits for these and then despawns, and that despawn used to take the
+/// only handle to each picture with it. Bevy drops an asset once nothing holds a
+/// strong handle to it, so every picture that was not on screen at that moment went
+/// back to being unloaded - which is why the room the player is standing in works
+/// and the one two doors away does not until it is walked into.
+///
+/// Rooms got away with it because a room change happens behind a fade, and a fade
+/// covers a picture that is still arriving. A carousel pan does not: the player
+/// presses an arrow, the shot is swapped for a frame that is not there yet, and
+/// there is no fade over it - just the backdrop, because the pan despawns the shot
+/// it was going to replace. Holding the handles here is what makes the pan show the
+/// pan.
+///
+/// Not a general-purpose cache and deliberately not: this is exactly the preload
+/// list, kept for exactly as long as the session is.
+#[derive(Resource, Default)]
+pub struct PreloadedImages(Vec<Handle<Image>>);
+
+impl PreloadedImages {
+    /// Take the pictures the game needs and keep them.
+    pub fn hold(handles: Vec<Handle<Image>>) -> Self {
+        Self(handles)
+    }
+
+    /// The handles being held.
+    ///
+    /// Exposed so a test can check what is still held once the overlay that used to
+    /// hold it is gone, which is the whole point of the resource.
+    pub fn handles(&self) -> &[Handle<Image>] {
+        &self.0
+    }
+}
+
 pub const SPLASH_SECONDS: f32 = 1.0;
 
 /// How long the overlay takes to clear once the last texture is in.
@@ -35,6 +70,7 @@ pub struct LoadingPlugin;
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SplashTimer>()
+            .init_resource::<PreloadedImages>()
             .add_systems(OnEnter(GameState::Loading), spawn_splash_ui)
             .add_systems(Update, splash_system.run_if(in_state(GameState::Loading)));
     }
