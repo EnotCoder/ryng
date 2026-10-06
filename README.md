@@ -142,6 +142,31 @@ assets/
 mobile/              # Gradle project for the Android build
 ```
 
+The tree above is written by hand, which means it was true on the day it was typed.
+`helper.py` is the same map, checked against the disk:
+
+```sh
+python3 helper.py                    # lines per file and folder, code vs tests
+python3 helper.py about rooms/data   # what a module is for, who uses it
+python3 helper.py doctor             # known problems and unfinished markers
+python3 helper.py help               # every command
+```
+
+`about` takes a fragment, not a full path, and will name every module it could mean
+rather than picking one — `about tests` finds nine `tests.rs` in nine directories,
+and guessing which one you meant would be worse than asking. It also reports what a
+module exports and which files depend on it, read from the `use`, `mod` and inline
+`super::` references in the source.
+
+The descriptions are a table in the script rather than scraped from the modules,
+because fewer than half of them carry a `//!` header and a description for 22 files
+is not much of a map. `python3 helper.py docs` fails when a module has no entry, an
+entry names a file that is gone, or an entry is left empty — that is the check to
+run after adding or renaming a module.
+
+Standard library only. It is not in `Cargo.toml` and never will be, so it cannot
+drift from the Android build.
+
 ## The room table
 
 Adding a room is one row, not a function. `src/scenes/game/rooms/data.rs` looks a
