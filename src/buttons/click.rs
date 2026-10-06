@@ -24,6 +24,7 @@ pub(crate) type ButtonQuery<'w, 's, A> = Query<
         Option<&'static mut BackgroundColor>,
         Option<&'static mut ImageNode>,
         Option<&'static mut Node>,
+        Option<&'static mut crate::ScaledNode>,
     ),
     (Changed<Interaction>, With<Button>),
 >;
@@ -39,9 +40,9 @@ pub(crate) fn for_each_click<A: Component>(
     ui_scale: Res<UiScale>,
     mut on_click: impl FnMut(&A),
 ) {
-    for (entity, interaction, action, bg, img, node) in &mut clicks {
+    for (entity, interaction, action, bg, img, node, scaled) in &mut clicks {
         let visual = click_visual(interaction, was_pressed, entity, ui_scale.0);
-        if apply_visual(visual, bg, img, node) {
+        if apply_visual(visual, bg, img, node, scaled, ui_scale.0) {
             on_click(action);
         }
     }

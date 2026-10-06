@@ -76,6 +76,10 @@ the game links to yet.
 - Per-room music and transition sounds, cross-faded through a 0.35s fade overlay
 - **Camera** `FixedVertical` at `DESIGN_HEIGHT = 720`, so a room picture maps to
   the frame one to one and every UI constant can be authored against 720
+- **UI follows the window**: constants stay authored against 720 and are scaled by
+  `UiScale` at runtime. A node carrying `ScaledNode` and a text carrying
+  `ScaledFont` have their design-space numbers replayed whenever the window changes;
+  every field is an `Option`, and a `None` is left alone
 - **Android** target under `mobile/`, built with `cargo-apk`
 
 ## Controls

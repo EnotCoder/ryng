@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::UiScale;
+use crate::{ScaledFont, ScaledNode, UiScale};
 use crate::acts::{ActId, CurrentAct, default_act};
 use crate::buttons;
 use crate::scenes::fade::{RoomFade, spawn_fade_overlay};
@@ -75,6 +75,9 @@ pub fn spawn_game_ui(
 
     commands
         .spawn((
+            ScaledNode {
+                padding: Some(HUD_MARGIN),                ..default()
+            },
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -98,6 +101,11 @@ pub fn spawn_game_ui(
 
     commands
         .spawn((
+            ScaledNode {
+                padding: Some(HUD_MARGIN),
+                gap: Some(HUD_ROW_GAP),
+                ..default()
+            },
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -114,6 +122,7 @@ pub fn spawn_game_ui(
         .with_children(|parent| {
             parent.spawn((
                 Text::new("You are at"),
+                ScaledFont(CAPTION_SIZE),
                 TextFont {
                     font_size: s.font(CAPTION_SIZE),
                     ..default()
@@ -122,6 +131,7 @@ pub fn spawn_game_ui(
             ));
             parent.spawn((
                 Text::new(""),
+                ScaledFont(ROOM_LABEL_SIZE),
                 TextFont {
                     font_size: s.font(ROOM_LABEL_SIZE),
                     ..default()
@@ -133,6 +143,11 @@ pub fn spawn_game_ui(
 
     commands
         .spawn((
+            ScaledNode {
+                bottom: Some(CAROUSEL_BOTTOM),
+                gap: Some(CAROUSEL_GAP),
+                ..default()
+            },
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
@@ -243,6 +258,14 @@ pub(crate) fn spawn_speech_ui(mut commands: Commands, ui_scale: Res<UiScale>) {
     let s = *ui_scale;
     commands
         .spawn((
+            ScaledNode {
+                size: Some(Vec2::new(SPEECH_WIDTH, 0.0)),
+                bottom: Some(SPEECH_BOTTOM),
+                right: Some(SPEECH_MARGIN),
+                padding: Some(SPEECH_PADDING),
+                gap: Some(SPEECH_GAP),
+                ..default()
+            },
             Node {
                 position_type: PositionType::Absolute,
                 width: s.px(SPEECH_WIDTH),
@@ -265,6 +288,7 @@ pub(crate) fn spawn_speech_ui(mut commands: Commands, ui_scale: Res<UiScale>) {
         .with_children(|parent| {
             parent.spawn((
                 Text::new(""),
+                ScaledFont(SPEECH_NAME_SIZE),
                 TextFont {
                     font_size: s.font(SPEECH_NAME_SIZE),
                     ..default()
@@ -274,6 +298,7 @@ pub(crate) fn spawn_speech_ui(mut commands: Commands, ui_scale: Res<UiScale>) {
             ));
             parent.spawn((
                 Text::new(""),
+                ScaledFont(SPEECH_TEXT_SIZE),
                 TextFont {
                     font_size: s.font(SPEECH_TEXT_SIZE),
                     ..default()

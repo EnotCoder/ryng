@@ -33,6 +33,14 @@ impl Plugin for SettingsPlugin {
                     // `SoundVolume` is a resource and outlives the state, so a
                     // setting chosen here stays applied in game.
                     .run_if(in_state(GameState::Menu)),
+            )
+            // Not gated on the state: the track geometry has to follow the window
+            // whenever it changes, and the panel may be closed at the time. The
+            // system reads `UiScale::is_changed`, so it is a no-op when nothing
+            // moved.
+            .add_systems(
+                PreUpdate,
+                systems::rescale_slider_system::<systems::SoundVolume>,
             );
     }
 }

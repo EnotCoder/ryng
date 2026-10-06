@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use crate::UiScale;
+use crate::{ScaledNode, UiScale};
 use crate::acts::{Inventory, Item};
 use crate::state::GameState;
 
@@ -64,6 +64,12 @@ pub fn spawn_inventory_ui(
     let s = *ui_scale;
     commands
         .spawn((
+            ScaledNode {
+                bottom: Some(INVENTORY_MARGIN),
+                left: Some(INVENTORY_MARGIN),
+                gap: Some(INVENTORY_GAP),
+                ..default()
+            },
             Node {
                 position_type: PositionType::Absolute,
                 left: s.px(INVENTORY_MARGIN),
@@ -87,6 +93,7 @@ pub fn spawn_inventory_ui(
                     .spawn((
                         InventorySlot { index },
                         ImageNode::new(slot_bg),
+                        ScaledNode::sized(SLOT_SIZE, SLOT_SIZE),
                         Node {
                             width: s.px(SLOT_SIZE),
                             height: s.px(SLOT_SIZE),
@@ -105,6 +112,7 @@ pub fn spawn_inventory_ui(
                                     .map(|it| textures.icon(it))
                                     .unwrap_or_default(),
                             ),
+                            ScaledNode::sized(ICON_SIZE, ICON_SIZE),
                             Node {
                                 width: s.px(ICON_SIZE),
                                 height: s.px(ICON_SIZE),

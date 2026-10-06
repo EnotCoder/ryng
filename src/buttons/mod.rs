@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
+use crate::{ScaledFont, ScaledNode};
+
 pub const NORMAL_BUTTON: Color = Color::srgb(0.2, 0.6, 0.9);
 pub const HOVERED_BUTTON: Color = Color::srgb(0.4, 0.8, 0.6);
 pub const PRESSED_BUTTON: Color = Color::srgb(0.9, 0.3, 0.3);
@@ -13,7 +15,13 @@ pub const BUTTON_SIZE: Vec2 = Vec2::new(150.0, 50.0);
 pub const BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(155.0, 55.0);
 
 pub const BUTTON_GAP: f32 = 50.0;
-pub const FONT_SIZE: FontSize = FontSize::Px(20.0);
+/// The design-space size behind [`FONT_SIZE`], for the same reason `ScaledNode`
+/// exists: a `Val::Px` written at spawn does not follow the window.
+const DESIGN_FONT_SIZE: f32 = 20.0;
+
+/// Derived from the design constant rather than repeating the number, so the two
+/// cannot drift.
+pub const FONT_SIZE: FontSize = FontSize::Px(DESIGN_FONT_SIZE);
 
 mod click;
 mod plain;
@@ -38,6 +46,11 @@ pub(crate) fn spawn_button_core(
             Button,
             action,
             background,
+            // The design-space size, so `rescale_ui_system` can put it back when
+            // the window changes. Without it the button keeps whatever size the
+            // window had at spawn, and only a hover - which goes through
+            // `apply_visual` and reads the live scale - corrects it.
+            ScaledNode::sized(BUTTON_SIZE.x, BUTTON_SIZE.y),
             Node {
                 width: Val::Px(BUTTON_SIZE.x * ui_scale),
                 height: Val::Px(BUTTON_SIZE.y * ui_scale),
@@ -50,6 +63,7 @@ pub(crate) fn spawn_button_core(
         .with_children(|parent| {
             parent.spawn((
                 Text::new(text),
+                ScaledFont(DESIGN_FONT_SIZE),
                 TextFont {
                     font_size: {
                         if let FontSize::Px(size) = FONT_SIZE {
@@ -110,11 +124,20 @@ pub(crate) fn click_visual(
 }
 
 /// Applies colors/tint and returns true if it was a "full click".
+///
+/// Also records the size it just applied into the button's `ScaledNode`, in design
+/// space. That is what keeps a hover and a resize from fighting over the width:
+/// `rescale_ui_system` replays whatever `ScaledNode` holds, so a button that is
+/// hovered at the moment the window changes must have the *hovered* size recorded,
+/// or the resize would restore the resting size and the button would shrink out
+/// from under a pointer that is still on it.
 pub(crate) fn apply_visual(
     visual: VisualState,
     bg: Option<Mut<'_, BackgroundColor>>,
     img: Option<Mut<'_, ImageNode>>,
     node: Option<Mut<'_, Node>>,
+    scaled: Option<Mut<'_, ScaledNode>>,
+    ui_scale: f32,
 ) -> bool {
     if let Some(mut bg) = bg {
         bg.0 = visual.bg_color;
@@ -125,6 +148,13 @@ pub(crate) fn apply_visual(
     if let Some(mut node) = node {
         node.width = Val::Px(visual.size.x);
         node.height = Val::Px(visual.size.y);
+    }
+    if let Some(mut scaled) = scaled {
+        // The scale is divided back out so this stays a round trip through the one
+        // `click_visual` rather than a second place the sizes are written down.
+        // Guarded because the scale is clamped at 0.4 rather than at zero, so the
+        // division cannot blow up - but a zero would silently produce an infinity.
+        scaled.size = (ui_scale > 0.0).then(|| visual.size / ui_scale);
     }
     visual.released
 }

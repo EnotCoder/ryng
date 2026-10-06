@@ -3,6 +3,7 @@ use bevy::ui::FocusPolicy;
 
 use crate::UiScale;
 use crate::buttons;
+use crate::{ScaledFont, ScaledNode};
 use crate::scenes::settings::systems::{
     SettingsPanel, SettingsPanelAction, SettingsPanelOpen, Slider, SliderFill, SliderReadout,
     SliderThumb, SliderValue, SoundVolume,
@@ -41,15 +42,21 @@ fn settings_row(
     widget: impl FnOnce(&mut ChildSpawnerCommands<'_>),
 ) {
     parent
-        .spawn((Node {
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            column_gap: s.px(ROW_GAP),
-            ..default()
-        },))
+        .spawn((
+            ScaledNode {
+                gap: Some(ROW_GAP),                ..default()
+            },
+            Node {
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: s.px(ROW_GAP),
+                ..default()
+            },
+        ))
         .with_children(|row| {
             row.spawn((
                 Text::new(label),
+                ScaledFont(LABEL_SIZE),
                 TextFont {
                     font_size: s.font(LABEL_SIZE),
                     ..default()
@@ -70,9 +77,12 @@ fn slider_row<R: SliderValue + 'static>(
             Slider::<R> {
                 width: TRACK_WIDTH * s.0,
                 thumb: THUMB_SIZE * s.0,
+                design_width: TRACK_WIDTH,
+                design_thumb: THUMB_SIZE,
                 marker: std::marker::PhantomData,
             },
             BackgroundColor(TRACK_COLOR),
+            ScaledNode::sized(TRACK_WIDTH, TRACK_HEIGHT),
             Node {
                 width: s.px(TRACK_WIDTH),
                 height: s.px(TRACK_HEIGHT),
@@ -97,6 +107,10 @@ fn slider_row<R: SliderValue + 'static>(
                 SliderThumb,
                 Pickable::IGNORE,
                 BackgroundColor(LABEL_COLOR),
+                ScaledNode {
+                    size: Some(Vec2::splat(THUMB_SIZE)),
+                    left: Some(TRACK_WIDTH - THUMB_SIZE / 2.0),                    top: Some((TRACK_HEIGHT - THUMB_SIZE) / 2.0),                    ..default()
+                },
                 Node {
                     position_type: PositionType::Absolute,
                     width: s.px(THUMB_SIZE),
@@ -109,10 +123,12 @@ fn slider_row<R: SliderValue + 'static>(
         });
         row.spawn((
             SliderReadout,
+            ScaledNode::sized(READOUT_WIDTH, 0.0),
             Node {
                 width: s.px(READOUT_WIDTH),
                 ..default()
             },
+            ScaledFont(LABEL_SIZE),
             Text::new("100%"),
             TextFont {
                 font_size: s.font(LABEL_SIZE),
@@ -154,6 +170,13 @@ pub fn spawn_settings_panel(
         .with_children(|parent| {
             parent
                 .spawn((
+                    ScaledNode {
+                gap: Some(PANEL_ROW_GAP),
+                padding: Some(PANEL_PADDING),
+                border: Some(PANEL_BORDER),
+                radius: Some(PANEL_RADIUS),
+                ..default()
+                    },
                     Node {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
@@ -169,6 +192,7 @@ pub fn spawn_settings_panel(
                 .with_children(|panel| {
                     panel.spawn((
                         Text::new("Settings"),
+                        ScaledFont(TITLE_SIZE),
                         TextFont {
                             font_size: s.font(TITLE_SIZE),
                             ..default()

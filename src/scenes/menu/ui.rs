@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::UiScale;
+use crate::{ScaledNode, UiScale};
 use crate::buttons;
 use crate::scenes::loading::spawn_loading_overlay;
 use crate::state::GameState;
@@ -26,6 +26,9 @@ pub fn spawn_menu_ui(
     let s = *ui_scale;
     commands
         .spawn((
+            ScaledNode {
+                gap: Some(buttons::BUTTON_GAP),                ..default()
+            },
             Node {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),

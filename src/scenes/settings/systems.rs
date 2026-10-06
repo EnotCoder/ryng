@@ -2,6 +2,8 @@ use bevy::audio::{GlobalVolume, Volume};
 use bevy::ecs::component::Mutable;
 use bevy::prelude::*;
 
+use crate::UiScale;
+
 use crate::scenes::menu::MenuAction;
 
 #[derive(Resource)]
@@ -57,10 +59,19 @@ impl SliderValue for SoundVolume {
 
 /// The slider track for `R`. `width` and `thumb` are logical pixels, already
 /// scaled.
+///
+/// The design-space originals are kept alongside so the track can be rebuilt when
+/// the window changes: `width` and `thumb` are read by the click handling to turn a
+/// press into a position, so a stale value makes the slider answer to the wrong
+/// part of the window.
 #[derive(Component)]
 pub struct Slider<R: SliderValue> {
     pub width: f32,
     pub thumb: f32,
+    /// Design-space track width, replayed on resize by `rescale_sliders`.
+    pub design_width: f32,
+    /// Design-space thumb size, replayed on resize by `rescale_sliders`.
+    pub design_thumb: f32,
     pub marker: std::marker::PhantomData<fn() -> R>,
 }
 
@@ -135,6 +146,25 @@ pub fn panel_visibility_system(
 }
 
 // ----------------------------------------------------------------- slider
+
+/// Reapplies the design-space track width and thumb size after a resize.
+///
+/// A separate system from `rescale_ui_system` because `Slider` is generic over its
+/// value type, and a system cannot be added to the app without naming one
+/// concretely. The settings screen has a single value type; a second slider of
+/// another type means another line in `add_systems` here.
+pub fn rescale_slider_system<R: SliderValue + 'static>(
+    scale: Res<UiScale>,
+    mut sliders: Query<&mut Slider<R>>,
+) {
+    if !scale.is_changed() {
+        return;
+    }
+    for mut slider in &mut sliders {
+        slider.width = slider.design_width * scale.0;
+        slider.thumb = slider.design_thumb * scale.0;
+    }
+}
 
 /// Press, drag, release. Generic over the resource so a new slider needs no new
 /// system.
