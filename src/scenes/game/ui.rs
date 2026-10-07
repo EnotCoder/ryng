@@ -48,8 +48,8 @@ const CAROUSEL_BOTTOM: f32 = 25.0;
 /// oversight: raising `CAROUSEL_BOTTOM` to about 130 lifts it clear of them and onto
 /// the floor of the room, which is the one number to change if the slots are wanted
 /// back.
-const CAROUSEL_BUTTON_SIZE: Vec2 = Vec2::new(300.0, 150.0);
-const CAROUSEL_BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(305.0, 155.0);
+const CAROUSEL_BUTTON_SIZE: Vec2 = Vec2::new(200.0, 100.0);
+const CAROUSEL_BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(205.0, 105.0);
 
 #[derive(Component)]
 pub enum GameAction {
