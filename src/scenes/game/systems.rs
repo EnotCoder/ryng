@@ -16,9 +16,9 @@ use crate::scenes::game::rooms::components::{
     Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomFlip,
     RoomPart, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
 };
-use crate::scenes::game::rooms::data::RoomDef;
+use crate::scenes::game::rooms::data::{RoomDef, control_target};
 use crate::scenes::game::rooms::spawn::spawn_room_content;
-use crate::scenes::game::ui::{CarouselArrow, CarouselDir, GameAction};
+use crate::scenes::game::ui::{CarouselArrow, GameAction};
 use crate::state::GameState;
 
 /// The room drifts up and down a few pixels so a still picture is not perfectly
@@ -312,12 +312,53 @@ pub fn game_hotspot_system(
     }
 }
 
+/// Puts the shot the control would lead to on the control, and hides the control in a
+/// room that cannot be flipped.
+///
+/// Its own system rather than part of the one that handles the press, because the
+/// shot changes in three places - the room opening, a press that cuts, and a pan
+/// landing - and only the first of those is a click. Reading the room every frame is
+/// what catches the other two without each having to remember to redraw the button.
+///
+/// It runs after the carousel and the pan, so the picture swaps when the player
+/// arrives rather than when they set off: a press starts a pan but leaves the shot
+/// where it was, and the picture on the button is where the player is going.
+pub fn carousel_control_system(
+    rooms: Query<(&RoomVariants, &RoomVariantIndex), With<Room>>,
+    mut control: Query<(&mut ImageNode, &mut Visibility), With<CarouselArrow>>,
+    asset_server: Res<AssetServer>,
+) {
+    let Ok((variants, index)) = rooms.single() else {
+        return;
+    };
+    let target = control_target(index.0, variants.0.len());
+
+    for (mut image, mut visibility) in &mut control {
+        *visibility = if target.is_some() {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        let Some(to) = target else {
+            continue;
+        };
+        let Some(path) = variants.0[to].preview else {
+            continue;
+        };
+        let wanted = asset_server.load(path);
+        // Compared before writing: assigning the handle every frame marks the image
+        // dirty every frame, and Bevy rebuilds the sprite that goes with it.
+        if image.image.id() != wanted.id() {
+            image.image = wanted;
+        }
+    }
+}
+
 pub fn carousel_system(
     clicks: buttons::ButtonQuery<CarouselArrow>,
     mut was_pressed: Local<HashSet<Entity>>,
     ui_scale: Res<UiScale>,
     mut rooms: FlippingRoom,
-    mut arrow_visibility: Query<&mut Visibility, With<CarouselArrow>>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
@@ -328,23 +369,15 @@ pub fn carousel_system(
     };
     let variant_count = room_variants.0.len();
 
-    for mut vis in &mut arrow_visibility {
-        *vis = if variant_count > 1 {
-            Visibility::Visible
-        } else {
-            Visibility::Hidden
-        };
-    }
-
-    buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |arrow| {
-        // A pan owns the room while it plays. Pressing the other arrow mid-pan
-        // would either stack a second set of frames on the first or turn the
-        // corridor around halfway, and neither is something the player asked for;
-        // the arrows do nothing until the shot they were heading for has arrived.
+    buttons::for_each_click(clicks, &mut was_pressed, ui_scale, |_| {
+        // A pan owns the room while it plays. Pressing mid-pan would either stack a
+        // second set of frames on the first or turn the corridor around halfway, and
+        // neither is something the player asked for; the control does nothing until
+        // the shot it was heading for has arrived.
         if flipping.is_some() {
             return;
         }
-        let Some(new_index) = step(variant_index.0, variant_count, arrow.0) else {
+        let Some(new_index) = control_target(variant_index.0, variant_count) else {
             return;
         };
 
@@ -360,9 +393,9 @@ pub fn carousel_system(
                 parent.spawn((RoomPart, Sprite::from_image(asset_server.load(first))));
             });
             // The art runs from the first shot towards the last, so `forward` is
-            // which end of it the player set off from - not which arrow was pressed.
-            // In a two-shot room those come out the same, but pressing next from the
-            // last shot wraps to the first, and that is a step backwards.
+            // which end of it the player set off from - not which way the button
+            // points. Pressing from the last shot wraps to the first, and that is a
+            // step backwards along the art.
             commands.entity(room).insert(RoomFlip::new(
                 frames,
                 new_index,
@@ -547,21 +580,6 @@ pub fn item_sprites_system(
             ));
         });
     }
-}
-
-/// The variant one step away, wrapping at both ends.
-///
-/// `None` when there is nowhere to go: a single variant, or an empty room.
-/// Both are refused before the modulo, which would otherwise divide by zero.
-pub(super) fn step(index: usize, count: usize, dir: CarouselDir) -> Option<usize> {
-    if count < 2 {
-        return None;
-    }
-    let next = match dir {
-        CarouselDir::Prev => (index + count - 1) % count,
-        CarouselDir::Next => (index + 1) % count,
-    };
-    (next != index).then_some(next)
 }
 
 fn fire_game(action: &GameAction, next: &mut NextState<GameState>) {

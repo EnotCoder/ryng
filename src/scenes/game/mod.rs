@@ -77,6 +77,10 @@ impl Plugin for GamePlugin {
                 // room carries `RoomFlip` from the moment the arrow is pressed, and
                 // this only has something to advance once it does.
                 systems::room_flip_system,
+                // After both, so the picture on the control swaps when the player
+                // arrives at a shot rather than when they set off towards it: a press
+                // starts the pan and leaves the shot alone.
+                systems::carousel_control_system,
                 systems::game_hotspot_system,
                 // After the hotspot systems, so a pickup despawns the sprite
                 // and clears the spot in the same frame it is taken.

@@ -11,9 +11,14 @@ use bevy::prelude::*;
 
 use crate::UiScale;
 
-use super::{apply_visual, click_visual};
+use super::{ButtonSizes, apply_visual, click_visual_sized};
 
 /// A button carrying an action component `A`, with the visuals it may tint.
+///
+/// `ButtonSizes` is required rather than optional: every button is spawned through
+/// `spawn_button_core`, which puts them there, and a button without them would fall
+/// back to the standard size - which is the wrong size for the one button in the
+/// game that draws a picture of its own, and the failure would be silent.
 pub(crate) type ButtonQuery<'w, 's, A> = Query<
     'w,
     's,
@@ -21,7 +26,7 @@ pub(crate) type ButtonQuery<'w, 's, A> = Query<
         Entity,
         &'static Interaction,
         &'static A,
-        Option<&'static mut BackgroundColor>,
+        &'static ButtonSizes,
         Option<&'static mut ImageNode>,
         Option<&'static mut Node>,
         Option<&'static mut crate::ScaledNode>,
@@ -40,9 +45,9 @@ pub(crate) fn for_each_click<A: Component>(
     ui_scale: Res<UiScale>,
     mut on_click: impl FnMut(&A),
 ) {
-    for (entity, interaction, action, bg, img, node, scaled) in &mut clicks {
-        let visual = click_visual(interaction, was_pressed, entity, ui_scale.0);
-        if apply_visual(visual, bg, img, node, scaled, ui_scale.0) {
+    for (entity, interaction, action, sizes, img, node, scaled) in &mut clicks {
+        let visual = click_visual_sized(interaction, was_pressed, entity, ui_scale.0, sizes);
+        if apply_visual(visual, img, node, scaled, ui_scale.0) {
             on_click(action);
         }
     }

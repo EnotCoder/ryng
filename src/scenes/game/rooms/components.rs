@@ -82,6 +82,16 @@ pub struct RoomVariant {
     pub title: &'static str,
     pub story: &'static str,
     pub hotspots: &'static [HotspotDef],
+    /// The carousel control that brings the player *to this shot*, or `None` for a
+    /// shot that is not somewhere the carousel goes.
+    ///
+    /// Belonging to the destination rather than to the shot being left is what makes
+    /// the table readable: the button shows the picture of where a press will take
+    /// you, so the art has to be found by looking up the shot it leads to, not the
+    /// one on screen.
+    ///
+    /// `None` on a single-shot room, which has nowhere to go and so no control.
+    pub preview: Option<&'static str>,
 }
 
 /// How long one frame of a shot-to-shot flip stays on screen.

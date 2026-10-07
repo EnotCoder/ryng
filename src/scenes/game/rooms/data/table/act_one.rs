@@ -25,11 +25,16 @@ use super::super::{RoomDef, p};
 /// It is a variant rather than a row of its own: both halls offer the stairs, so
 /// it would be a second key pointing at one picture and `room_def` would resolve
 /// whichever came first.
+///
+/// The control that leads here belongs to this shot, not to the hall it is shown
+/// from: standing at the lift the button offers the stairs, and this is the shot it
+/// takes the player to.
 pub(super) const STAIRS_SHOT: RoomVariant = shot!(
     p::F1_STAIRS,
     "1st floor - stairs",
     "The stairs are open. Climb up.",
-    &[hop!(p::STAIRS_1, 200.0, 30.0, Vec2::new(300.0, 450.0))]
+    &[hop!(p::STAIRS_1, 200.0, 30.0, Vec2::new(300.0, 450.0))],
+    p::CAROUSEL_TO_STAIRS
 );
 
 pub(super) static ROOMS: &[RoomDef] = &[
@@ -93,7 +98,8 @@ pub(super) static ROOMS: &[RoomDef] = &[
             p::F1_HALL,
             "Hall - 1st floor",
             "Choose: take the elevator or\nwalk up the stairs.",
-            &[hop!(p::ELEVATOR, 0.0, 25.0, Vec2::new(250.0, 465.0))]
+            &[hop!(p::ELEVATOR, 0.0, 25.0, Vec2::new(250.0, 465.0))],
+            p::CAROUSEL_TO_ELEVATOR
         ),
         STAIRS_SHOT
     ),
@@ -109,7 +115,8 @@ pub(super) static ROOMS: &[RoomDef] = &[
             p::F1_HALL_DEAD,
             "Hall - 1st floor",
             "The elevator is out of order.\nThe stairs are the only way up.",
-            &[]
+            &[],
+            p::CAROUSEL_TO_ELEVATOR
         ),
         STAIRS_SHOT
     ),

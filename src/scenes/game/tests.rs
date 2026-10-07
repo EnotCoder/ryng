@@ -8,19 +8,20 @@ use std::collections::HashSet;
 
 use bevy::prelude::*;
 
-use super::systems::{item_hotspot_visibility_system, room_flip_system, step};
+use super::systems::{
+    carousel_control_system, carousel_system, item_hotspot_visibility_system, room_flip_system,
+};
 use crate::acts::{ActId, CurrentAct, Item};
 use crate::scenes::game::items::WorldItems;
 use crate::scenes::game::rooms::components::{
     HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room, RoomFlip,
     RoomTitle, RoomVariantIndex,
 };
-use crate::scenes::game::rooms::data::{RoomDef, p, room_def, rooms};
-use crate::scenes::game::ui::{CarouselDir, spawn_game_ui};
+use crate::scenes::game::rooms::data::{RoomDef, all_paths, control_target, p, room_def, rooms};
+use crate::scenes::game::ui::{CarouselArrow, spawn_game_ui};
 use crate::scenes::fade::RoomFade;
 use crate::scenes::loading::PreloadedImages;
 use crate::scenes::game::StartRoom;
-use crate::scenes::game::rooms::data::all_paths;
 use crate::UiScale;
 
 /// Bevy validates a system's queries when the system first runs, and panics
@@ -44,85 +45,66 @@ fn the_item_hotspot_system_has_no_conflicting_queries() {
 
 #[test]
 fn single_variant_has_nowhere_to_go() {
-    assert_eq!(step(0, 1, CarouselDir::Next), None);
-    assert_eq!(step(0, 1, CarouselDir::Prev), None);
+    assert_eq!(control_target(0, 1), None);
 }
 
 /// The room would have no variants at all. The modulo below divides by `count`,
 /// so this has to be refused rather than panicked on.
 #[test]
 fn empty_room_does_not_divide_by_zero() {
-    assert_eq!(step(0, 0, CarouselDir::Next), None);
-    assert_eq!(step(0, 0, CarouselDir::Prev), None);
+    assert_eq!(control_target(0, 0), None);
 }
 
+/// With the two shots every carousel in the game has, the one control leads to the
+/// other shot.
 #[test]
-fn next_moves_forward() {
-    assert_eq!(step(0, 2, CarouselDir::Next), Some(1));
-    assert_eq!(step(1, 3, CarouselDir::Next), Some(2));
-}
-
-#[test]
-fn prev_moves_backward() {
-    assert_eq!(step(1, 2, CarouselDir::Prev), Some(0));
-    assert_eq!(step(2, 3, CarouselDir::Prev), Some(1));
+fn the_control_leads_to_the_other_shot() {
+    assert_eq!(control_target(0, 2), Some(1), "the lift offers the stairs");
+    assert_eq!(control_target(1, 2), Some(0), "the stairs offer the lift");
 }
 
 /// The ends wrap around rather than sticking or going out of bounds.
 #[test]
 fn ends_wrap() {
-    assert_eq!(
-        step(1, 2, CarouselDir::Next),
-        Some(0),
-        "last wraps to first"
-    );
-    assert_eq!(
-        step(0, 3, CarouselDir::Prev),
-        Some(2),
-        "first wraps to last"
-    );
+    assert_eq!(control_target(1, 2), Some(0), "last wraps to first");
 }
 
 #[test]
 fn result_is_always_in_range() {
     for count in 2..8 {
         for index in 0..count {
-            for dir in [CarouselDir::Next, CarouselDir::Prev] {
-                let next = step(index, count, dir).expect("a move is available");
-                assert!(
-                    next < count,
-                    "count {count} index {index} {dir:?} produced {next}",
-                );
-                assert_ne!(next, index, "a step must change the index");
-            }
+            let next = control_target(index, count).expect("a move is available");
+            assert!(next < count, "count {count} index {index} produced {next}");
+            assert_ne!(next, index, "a step must change the index");
         }
     }
 }
 
-/// Pressing one arrow repeatedly must visit every variant and return to the
-/// start, for any number of variants.
+/// Pressing the control repeatedly must visit every shot and come full circle, for
+/// any number of shots.
+///
+/// There is no "back" any more - the control always moves the same way - so this is
+/// also what pins that a carousel of any length can be walked from end to end.
 #[test]
 fn cycling_visits_every_variant() {
     for count in 2..8 {
-        for dir in [CarouselDir::Next, CarouselDir::Prev] {
-            let mut seen = vec![false; count];
-            let mut index = 0;
-            seen[0] = true;
-            for _ in 0..count - 1 {
-                index = step(index, count, dir).expect("a move is available");
-                assert!(!seen[index], "count {count} {dir:?} revisited {index}");
-                seen[index] = true;
-            }
-            assert!(
-                seen.iter().all(|hit| *hit),
-                "count {count} {dir:?} skipped a variant"
-            );
-            assert_eq!(
-                step(index, count, dir),
-                Some(0),
-                "count {count} {dir:?} did not come full circle",
-            );
+        let mut seen = vec![false; count];
+        let mut index = 0;
+        seen[0] = true;
+        for _ in 0..count - 1 {
+            index = control_target(index, count).expect("a move is available");
+            assert!(!seen[index], "count {count} revisited {index}");
+            seen[index] = true;
         }
+        assert!(
+            seen.iter().all(|hit| *hit),
+            "count {count} skipped a variant"
+        );
+        assert_eq!(
+            control_target(index, count),
+            Some(0),
+            "count {count} did not come full circle",
+        );
     }
 }
 
@@ -875,7 +857,7 @@ fn a_played_pan_lands_on_the_shot_and_clears_itself() {
 
     let def = room_def(p::F1_HALL, ActId::ActOne);
     let frames = pan_of(def);
-    let to = step(0, def.variants.len(), CarouselDir::Next).expect("the hall has a second shot");
+    let to = control_target(0, def.variants.len()).expect("the hall has a second shot");
 
     // The spawner runs once and only once: run it every update and it puts a second
     // room in the world, and every system that reads "the room" stops matching when
@@ -1003,4 +985,173 @@ fn the_preload_list_is_still_held_once_the_game_is_open() {
             );
         }
     }
+}
+
+/// The control carries a picture of the shot it would lead to, and swaps it when the
+/// shot changes.
+///
+/// Read off the real table and through the real system, because the claim is about
+/// what is on the button rather than about what the table says: the table could name
+/// both pictures perfectly while the system left the first one up forever.
+#[test]
+fn the_control_shows_the_shot_it_leads_to() {
+    for (from, shown) in [
+        (0, p::CAROUSEL_TO_STAIRS),
+        (1, p::CAROUSEL_TO_ELEVATOR),
+    ] {
+        let def = room_def(p::F1_HALL, ActId::ActOne);
+        let target = control_target(from, def.variants.len()).expect("two shots");
+        assert_eq!(
+            def.variants[target].preview,
+            Some(shown),
+            "standing on shot {from} the control should offer shot {target}",
+        );
+    }
+}
+
+/// A single-picture room shows no control at all.
+///
+/// The control is one rectangle at the bottom of the screen; a room that cannot be
+/// flipped would have it sitting there looking like something to press, and the
+/// player would press it and nothing would happen.
+#[test]
+fn a_room_with_one_shot_hides_the_control() {
+    let def = room_def(p::F1_STREET_1, ActId::ActOne);
+
+    assert_eq!(control_target(0, def.variants.len()), None);
+    assert!(
+        def.variants.iter().all(|variant| variant.preview.is_none()),
+        "a single-picture room carries a control picture",
+    );
+}
+
+/// Pressing the control moves the shot, plays the pan, and leaves the control showing
+/// where it would go next.
+///
+/// The whole path in one test, because the three halves are what make it work: the
+/// press has to start the pan rather than cutting, the pan has to land on the shot,
+/// and the picture on the button has to follow. A test that only checked the table
+/// would pass with the system never writing the picture at all.
+#[test]
+fn pressing_the_control_moves_shot_picture_and_control_together() {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
+        .insert_resource(CurrentAct(ActId::ActOne))
+        // `for_each_click` scales the button visuals by it, like every other caller.
+        .insert_resource(UiScale(1.0));
+
+    let def = room_def(p::F1_HALL, ActId::ActOne);
+    let frames = pan_of(def).len();
+    // One chain, as the game registers them. The two systems both write the room's
+    // shot and so cannot run unordered against each other, and Bevy checks that when
+    // they run rather than at build time.
+    app.add_systems(
+        Update,
+        (
+            move |mut commands: Commands,
+                  asset_server: Res<AssetServer>,
+                  mut once: Local<bool>| {
+                if *once {
+                    return;
+                }
+                *once = true;
+                crate::scenes::game::rooms::spawn::spawn_room(
+                    &mut commands,
+                    &asset_server,
+                    def,
+                    Vec3::ZERO,
+                );
+            },
+            carousel_system,
+            room_flip_system,
+            carousel_control_system,
+        )
+            .chain(),
+    );
+    app.update();
+
+    // The control the way `spawn_game_ui` builds it: one button, one picture.
+    let room = app
+        .world_mut()
+        .query_filtered::<Entity, With<Room>>()
+        .iter(app.world())
+        .next()
+        .expect("the hall spawned");
+    let opening = app
+        .world()
+        .resource::<AssetServer>()
+        .load::<Image>(p::CAROUSEL_TO_STAIRS);
+    let control = app
+        .world_mut()
+        .spawn((
+            Button,
+            CarouselArrow,
+            crate::buttons::ButtonSizes::default(),
+            ImageNode {
+                image: opening,
+                ..default()
+            },
+            Interaction::default(),
+            Node::default(),
+        ))
+        .id();
+
+    app.update();
+    let picture_of = |app: &mut App| -> String {
+        let world = app.world_mut();
+        world
+            .resource::<AssetServer>()
+            .get_path(world.get::<ImageNode>(control).expect("the control").image.id())
+            .map(|path| path.to_string())
+            .unwrap_or_default()
+    };
+    assert_eq!(
+        picture_of(&mut app),
+        p::CAROUSEL_TO_STAIRS,
+        "the control opens on the stairs while the player is at the lift",
+    );
+
+    // A press is `Pressed` then `None` over the same button; that pair is what
+    // `for_each_click` reads as a completed click.
+    *app.world_mut().get_mut::<Interaction>(control).unwrap() = Interaction::Pressed;
+    app.update();
+    *app.world_mut().get_mut::<Interaction>(control).unwrap() = Interaction::None;
+    app.update();
+
+    let world = app.world_mut();
+    assert!(
+        world.get::<RoomFlip>(room).is_some(),
+        "the press cut to the stairs instead of playing the pan",
+    );
+    assert_eq!(
+        world.get::<RoomVariantIndex>(room).map(|index| index.0),
+        Some(0),
+        "the shot changed while the pan was still playing, so the caption and the \\
+         control would name a corridor the player has not arrived at",
+    );
+
+    // Run the pan out, then the control should be offering the way back.
+    for _ in 0..frames {
+        app.update();
+        let mut pans = app
+            .world_mut()
+            .query_filtered::<&mut RoomFlip, With<Room>>();
+        let world = app.world_mut();
+        for mut flip in pans.iter_mut(world) {
+            flip.timer = Timer::from_seconds(0.0, TimerMode::Once);
+        }
+    }
+    app.update();
+
+    assert_eq!(
+        app.world().get::<RoomVariantIndex>(room).map(|index| index.0),
+        Some(1),
+        "the pan landed on the wrong shot",
+    );
+    assert_eq!(
+        picture_of(&mut app),
+        p::CAROUSEL_TO_ELEVATOR,
+        "the control still offers the stairs while the player is standing on them",
+    );
 }

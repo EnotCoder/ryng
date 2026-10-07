@@ -66,6 +66,20 @@ pub(crate) fn key_of(room: &RoomDef) -> &'static str {
     room.variants[0].path
 }
 
+/// The shot the carousel control leads to from `index`: the next one along, wrapping.
+///
+/// `None` when there is nowhere to go - a single shot, or an empty room, and the
+/// modulo below would otherwise divide by zero.
+///
+/// One control rather than a pair, so there is no "back": it walks the carousel the
+/// same way every time. With the two shots every carousel in the game has that is
+/// simply the other one, which is what the control's picture promises the player.
+/// A carousel with three or more shots could not be walked back this way, and would
+/// need a direction here again.
+pub(crate) fn control_target(index: usize, count: usize) -> Option<usize> {
+    (count > 1).then(|| (index + 1) % count)
+}
+
 #[derive(Component, Clone, Copy)]
 pub(crate) struct RoomDef {
     pub sound: TransitionSound,
@@ -109,13 +123,25 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
 /// asked for while the player is already standing in the room, one arrow press
 /// after the overlay has gone - and an arrow press is a click, so a frame that has
 /// not finished loading lands as a blank rectangle in the middle of the pan.
+///
+/// The carousel control is in the same position for the same reason: it is asked
+/// for the frame the room opens on, and a control with no picture on it is a
+/// rectangle the player cannot read.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
     rooms()
         .flat_map(|room| {
             room.variants
                 .iter()
                 .map(|variant| variant.path)
+                .chain(variant_previews(room))
                 .chain(room.flip.unwrap_or(&[]).iter().copied())
         })
         .chain(crate::scenes::game::npc::paths())
+}
+
+/// The carousel controls a room's shots can be reached with.
+pub(crate) fn variant_previews(room: &RoomDef) -> impl Iterator<Item = &'static str> {
+    room.variants
+        .iter()
+        .filter_map(|variant| variant.preview)
 }

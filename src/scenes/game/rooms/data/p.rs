@@ -25,3 +25,9 @@ pub const AP_1: &str = "tex/rooms/floor_2/ap_1.png";
 pub const AP_2: &str = "tex/rooms/floor_2/ap_2.png";
 pub const AP_3: &str = "tex/rooms/floor_2/ap_3.png";
 pub const MY_FLOOR: &str = "tex/rooms/my_floor/room_with_elevator_floor_my.png";
+
+// The two faces of the carousel control, named for where each one goes rather than
+// for what it looks like: each is a picture of the destination with a chevron
+// pointing at it, so the constant says what pressing it does.
+pub const CAROUSEL_TO_STAIRS: &str = "tex/ui/carusel_tex/to_stairs.png";
+pub const CAROUSEL_TO_ELEVATOR: &str = "tex/ui/carusel_tex/to_elevator.png";

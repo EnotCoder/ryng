@@ -61,13 +61,27 @@ macro_rules! gated {
 }
 pub(crate) use gated;
 
+/// One picture of a room: the shot itself.
+///
+/// The four-argument form is a shot the carousel cannot reach, which is every shot
+/// of a single-picture room. The five-argument form is a shot that can be reached
+/// with the carousel control and carries the art for that control - the preview goes
+/// last because it is the exception, and the hall's two shots are the only place in
+/// the table that has one.
 macro_rules! shot {
-    ($path:expr, $title:expr, $story:expr, $hotspots:expr) => {
+    ($path:expr, $title:expr, $story:expr, $hotspots:expr $(,)?) => {
+        shot!(@build $path, $title, $story, $hotspots, None)
+    };
+    ($path:expr, $title:expr, $story:expr, $hotspots:expr, $preview:expr $(,)?) => {
+        shot!(@build $path, $title, $story, $hotspots, Some($preview))
+    };
+    (@build $path:expr, $title:expr, $story:expr, $hotspots:expr, $preview:expr) => {
         RoomVariant {
             path: $path,
             title: $title,
             story: $story,
             hotspots: $hotspots,
+            preview: $preview,
         }
     };
 }

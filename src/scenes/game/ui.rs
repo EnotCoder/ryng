@@ -5,9 +5,10 @@ use crate::acts::{ActId, CurrentAct, default_act};
 use crate::buttons;
 use crate::scenes::fade::{RoomFade, spawn_fade_overlay};
 use crate::scenes::game::StartRoom;
-use crate::scenes::game::rooms::data::{act_of, all_paths, room_def};
+use crate::scenes::game::rooms::data::{act_of, all_paths, control_target, room_def};
 use crate::scenes::game::rooms::{
     components::{Room, RoomTitle},
+    data::RoomDef,
     spawn::spawn_room,
 };
 use crate::scenes::loading::{PreloadedImages, spawn_loading_overlay};
@@ -34,8 +35,21 @@ const ROOM_LABEL_SIZE: f32 = 16.0;
 /// the label and this as the value.
 const ROOM_LABEL_ALPHA: f32 = 0.85;
 
-const CAROUSEL_GAP: f32 = 80.0;
 const CAROUSEL_BOTTOM: f32 = 25.0;
+
+/// The carousel's one control, in design pixels.
+///
+/// 2:1, which is the shape of the art: a picture of the shot the press leads to and
+/// a chevron pointing at it. It replaces a pair of 150x50 buttons with "<" and ">"
+/// on them, and it is large because the thing it carries is a photograph - a
+/// thumbnail at button size is a smudge.
+///
+/// At this size it sits over the middle two inventory slots. That is a choice, not an
+/// oversight: raising `CAROUSEL_BOTTOM` to about 130 lifts it clear of them and onto
+/// the floor of the room, which is the one number to change if the slots are wanted
+/// back.
+const CAROUSEL_BUTTON_SIZE: Vec2 = Vec2::new(300.0, 150.0);
+const CAROUSEL_BUTTON_HOVERED_SIZE: Vec2 = Vec2::new(305.0, 155.0);
 
 #[derive(Component)]
 pub enum GameAction {
@@ -45,13 +59,27 @@ pub enum GameAction {
 #[derive(Component)]
 pub struct RoomLabel;
 
-#[derive(Component, Clone, Copy)]
-pub struct CarouselArrow(pub CarouselDir);
+/// The carousel's one control.
+///
+/// A marker rather than a direction: there is a single button now, and which way it
+/// goes is decided by where the room is rather than by what is written on the button.
+/// Its picture names the shot it would take the player to, so where a press lands is
+/// visible before it is taken.
+#[derive(Component)]
+pub struct CarouselArrow;
 
-#[derive(Component, Clone, Copy, Debug)]
-pub enum CarouselDir {
-    Prev,
-    Next,
+/// The picture the carousel control opens on: the one belonging to the shot a press
+/// would lead to from the shot the room opens on.
+///
+/// Falls back to a path that exists rather than to nothing. A room with a single shot
+/// never shows the control - `carousel_system` hides it - so which picture is behind
+/// it does not matter, but a handle to no path at all is an error every frame the
+/// room is open.
+fn opening_control(room: &RoomDef) -> &'static str {
+    let target = control_target(0, room.variants.len());
+    target
+        .and_then(|to| room.variants[to].preview)
+        .unwrap_or(room.variants[0].path)
 }
 
 pub fn spawn_game_ui(
@@ -142,11 +170,21 @@ pub fn spawn_game_ui(
             ));
         });
 
+    // `--rooms` names the room to open in; without it the game opens where the
+    // current act opens, which is what it always did.
+    //
+    // Read before anything is spawned rather than after, because the carousel control
+    // opens on the picture of the shot it would lead to, and that shot belongs to
+    // this room.
+    let start_room = start_room
+        .0
+        .unwrap_or_else(|| default_act().start_room);
+    let def = room_def(start_room, current_act.0);
+
     commands
         .spawn((
             ScaledNode {
                 bottom: Some(CAROUSEL_BOTTOM),
-                gap: Some(CAROUSEL_GAP),
                 ..default()
             },
             Node {
@@ -155,7 +193,6 @@ pub fn spawn_game_ui(
                 flex_direction: FlexDirection::Row,
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::End,
-                column_gap: s.px(CAROUSEL_GAP),
                 padding: UiRect {
                     left: Val::Px(0.0),
                     right: Val::Px(0.0),
@@ -168,28 +205,22 @@ pub fn spawn_game_ui(
             DespawnOnExit(GameState::Game),
         ))
         .with_children(|parent| {
-            buttons::draw_button_with_red_texture(
+            // The picture it opens with is the one belonging to the shot the room
+            // opens on, so the control is already correct on the first frame drawn
+            // rather than a frame late. `carousel_system` keeps it in step after that,
+            // and a room with nothing to flip has no preview and hides the control.
+            buttons::draw_picture_button(
                 parent,
-                "<",
-                CarouselArrow(CarouselDir::Prev),
-                &asset_server,
-                s.0,
-            );
-            buttons::draw_button_with_red_texture(
-                parent,
-                ">",
-                CarouselArrow(CarouselDir::Next),
-                &asset_server,
+                asset_server.load(opening_control(&def)),
+                CarouselArrow,
+                buttons::ButtonSizes {
+                    normal: CAROUSEL_BUTTON_SIZE,
+                    hovered: CAROUSEL_BUTTON_HOVERED_SIZE,
+                },
                 s.0,
             );
         });
 
-    // `--rooms` names the room to open in; without it the game opens where the
-    // current act opens, which is what it always did.
-    let start_room = start_room
-        .0
-        .unwrap_or_else(|| default_act().start_room);
-    let def = room_def(start_room, current_act.0);
     let handles: Vec<Handle<Image>> = all_paths().map(|path| asset_server.load(path)).collect();
     // Held before the overlay is given them, so the two have independent lifetimes:
     // the overlay despawns as soon as the last picture arrives, and the resource

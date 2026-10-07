@@ -9,7 +9,9 @@ use crate::acts::{ActId, default_act};
 use crate::scenes::game::rooms::components::HotspotAction;
 
 use super::table::ACTS;
-use super::{RoomDef, all_paths, key_of, p, room_def, rooms, rooms_with_act};
+use super::{
+    RoomDef, all_paths, key_of, p, room_def, rooms, rooms_with_act, variant_previews,
+};
 
 /// Every way out of a room: each hotspot plus the auto-next hand-off.
 ///
@@ -455,4 +457,58 @@ fn pan_frames_are_preloaded() {
             );
         }
     }
+}
+
+/// Every shot of a carousel can be reached with the control, and no other shot can.
+///
+/// The control's picture is named on the shot it leads *to*, so a shot missing one is
+/// a shot the player cannot get to from the carousel - and the button would show the
+/// destination's picture over the wrong destination, or nothing at all. A shot of a
+/// single-picture room is the other way round: it is not somewhere a carousel goes,
+/// and a control art on it would claim otherwise.
+#[test]
+fn control_pictures_belong_to_carousel_shots_only() {
+    for room in rooms() {
+        let key = key_of(room);
+        let is_carousel = room.variants.len() > 1;
+        for (index, variant) in room.variants.iter().enumerate() {
+            match variant.preview {
+                Some(path) => assert!(
+                    is_carousel,
+                    "{key} has one shot and shot {index} ({}) carries a control \
+                     picture ({path}), so the control would claim a shot the room \
+                     cannot reach",
+                    variant.path,
+                ),
+                None => assert!(
+                    !is_carousel,
+                    "{key} is a carousel and shot {index} ({}) has no control picture, \
+                     so the control cannot bring the player there",
+                    variant.path,
+                ),
+            }
+        }
+    }
+}
+
+/// Both halls offer the same two controls.
+///
+/// Whether the lift works is the difference between the two rows, and it is a
+/// difference in the pan and the story line. The control is not part of that: the
+/// player walks the corridor to reach the stairs either way, so a hall that grew its
+/// own pair would be offering the same walk twice in two different sets of pictures.
+#[test]
+fn both_halls_offer_the_same_controls() {
+    let working: Vec<_> = variant_previews(&room_def(p::F1_HALL, ActId::ActOne)).collect();
+    let dead: Vec<_> = variant_previews(&room_def(p::F1_HALL_DEAD, ActId::ActOne)).collect();
+
+    assert_eq!(
+        working, dead,
+        "the two halls offer different controls, so the same walk is drawn twice",
+    );
+    assert_eq!(
+        working,
+        vec![p::CAROUSEL_TO_ELEVATOR, p::CAROUSEL_TO_STAIRS],
+        "the lift and the stairs controls are not the two that exist",
+    );
 }
