@@ -104,6 +104,17 @@ macro_rules! flip {
 }
 pub(crate) use flip;
 
+/// The frames of a room that plays its own pictures while it stands.
+///
+/// Identical in shape to [`flip!`], and for the same reason: `concat!` will not
+/// take a `p` constant, so the folder is a literal here and not in `p`.
+macro_rules! anim {
+    ($dir:literal, $($frame:literal),+ $(,)?) => {
+        Some(&[$(concat!($dir, "/", $frame)),+])
+    };
+}
+pub(crate) use anim;
+
 /// One picture, one variant, player-driven. Covers most of the rooms.
 macro_rules! room {
     ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, $hotspots:expr) => {
@@ -115,13 +126,33 @@ macro_rules! room {
             variants: &[shot!($path, $title, $story, $hotspots)],
             next_act: None,
             flip: None,
+            anim: None,
         }
     };
 }
 pub(crate) use room;
 
 /// A non-interactive beat: it plays, waits, then moves on by itself.
+///
+/// The form taking an [`anim!`] is a beat whose picture is a short film rather
+/// than one frame - the lift falling is the only one. The animation arm comes
+/// first and matches on the `anim` name for the same reason `carousel!` does on
+/// `flip`: both expand to an expression, and a bare `$auto_next` arm written
+/// above would swallow the film as one more argument and quietly build a beat
+/// that never plays it.
 macro_rules! beat {
+    ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, anim ! ($dir:literal, $($frame:literal),+ $(,)?), $auto_next:expr $(,)?) => {
+        RoomDef {
+            sound: $sound,
+            music: $music,
+            interactive: false,
+            auto_next: $auto_next,
+            variants: &[shot!($path, $title, $story, &[])],
+            next_act: None,
+            flip: None,
+            anim: anim!($dir, $($frame),*),
+        }
+    };
     ($path:expr, $title:expr, $story:expr, $sound:expr, $music:expr, $auto_next:expr) => {
         RoomDef {
             sound: $sound,
@@ -131,6 +162,7 @@ macro_rules! beat {
             variants: &[shot!($path, $title, $story, &[])],
             next_act: None,
             flip: None,
+            anim: None,
         }
     };
 }
@@ -147,6 +179,7 @@ macro_rules! chapter {
             variants: &[shot!($path, $title, $story, &[])],
             next_act: Some($act),
             flip: None,
+            anim: None,
         }
     };
 }
@@ -174,6 +207,7 @@ macro_rules! carousel {
             variants: &[$($variant),+],
             next_act: None,
             flip: flip!($dir, $($frame),*),
+            anim: None,
         }
     };
     ($sound:expr, $music:expr, $($variant:expr),+ $(,)?) => {
@@ -185,6 +219,7 @@ macro_rules! carousel {
             variants: &[$($variant),+],
             next_act: None,
             flip: None,
+            anim: None,
         }
     };
 }

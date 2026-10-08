@@ -124,12 +124,31 @@ pub(super) static ROOMS: &[RoomDef] = &[
     // Act 1's last row. The fall is what the player is riding towards, and
     // `B_HALL` in act 2 is where they land - that room, not this one, carries the
     // act change.
+    //
+    // Nineteen frames rather than one picture, played by `room_anim_system` while
+    // the room stands. The folder is a literal here rather than a `p` constant for
+    // the reason `flip!` is: `concat!` will not take one, and the frames are named
+    // only here.
+    //
+    // 4.3 seconds is the sound's length, not a round number. The fall sound starts
+    // when the room does and is killed when the next one begins, and the room is
+    // spawned inside a 0.35s fade-in and left inside a 0.35s fade-out - so the
+    // picture is up for `auto_next` plus two thirds of a second, and the sound has
+    // to fit inside that. At the 4.0 this used to be, a 4.97s recording lost its
+    // last quarter of a second to the cut.
     beat!(
         p::ELEVATOR,
         "Inside elevator",
         "You are inside the elevator.\nAfter 15 seconds of riding, you fall and end up in the basement.",
         TransitionSound::ElevatorFall,
         Music::Indoors,
-        Some((p::B_HALL, 4.0))
+        anim!(
+            "tex/rooms/elevator_inside",
+            "1.png", "2.png", "3.png", "4.png", "5.png",
+            "6.png", "7.png", "8.png", "9.png", "10.png",
+            "11.png", "12.png", "13.png", "14.png", "15.png",
+            "16.png", "17.png", "18.png", "19.png"
+        ),
+        Some((p::B_HALL, 4.3))
     ),
 ];

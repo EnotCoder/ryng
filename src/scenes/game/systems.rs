@@ -13,8 +13,8 @@ use crate::scenes::game::items::{
     spot_is_live, try_drop, try_take,
 };
 use crate::scenes::game::rooms::components::{
-    Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomFlip,
-    RoomPart, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
+    Hotspot, HotspotAction, HotspotDef, HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomAnim,
+    RoomFlip, RoomPart, RoomStory, RoomTitle, RoomVariantIndex, RoomVariants,
 };
 use crate::scenes::game::rooms::data::{RoomDef, control_target};
 use crate::scenes::game::rooms::spawn::spawn_room_content;
@@ -61,6 +61,21 @@ type FlippingRoom<'w, 's> = Query<
 /// `ItemSprite` is what marks a sprite as a picture rather than a door.
 type ItemSpriteQuery<'w, 's> =
     Query<'w, 's, (Entity, &'static ItemSprite), (With<RoomPart>, Without<Room>)>;
+
+/// The room playing its own pictures, and the picture it is playing them on.
+///
+/// The picture half is `RoomPart` without the two things that share the marker:
+/// the hotspot rectangles and the chevrons drawn beside them. A beat has no
+/// hotspots at all, so in practice this is the one sprite in the room - but the
+/// filter is what makes it that rather than a coincidence, and it is what keeps
+/// this system from writing a door's colour if a room ever grows both.
+type AnimRoom<'w, 's> = Query<'w, 's, (Entity, &'static mut RoomAnim), With<Room>>;
+type AnimPicture<'w, 's> = Query<
+    'w,
+    's,
+    &'static mut Sprite,
+    (With<RoomPart>, Without<Hotspot>, Without<HotspotIcon>),
+>;
 
 /// Pickup and put-down spots: the only hotspots that come and go with an item.
 ///
@@ -461,6 +476,48 @@ pub fn room_flip_system(
     commands.entity(room).with_children(|parent| {
         spawn_room_content(parent, &asset_server, &variant, true);
     });
+}
+
+/// Show the next picture of a room that plays its own frames, then leave the last
+/// one up.
+///
+/// The room is spawned with `RoomAnim` already on it and is *not* rebuilt between
+/// frames: the picture is swapped in place rather than the children despawned and
+/// respawned as `room_flip_system` does. A beat has no hotspots to lose and no
+/// second shot to land on, so there is nothing a rebuild would buy here - and the
+/// room's own `auto_next` is what eventually takes the whole thing away, at which
+/// point the room and its last frame despawn together.
+pub fn room_anim_system(
+    mut rooms: AnimRoom,
+    mut parts: AnimPicture,
+    mut commands: Commands,
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+) {
+    let Ok((room, mut anim)) = rooms.single_mut() else {
+        return;
+    };
+    if !anim.timer.tick(time.delta()).just_finished() {
+        return;
+    }
+
+    // The last frame has had its turn, so the picture stays as it is until the
+    // room's `auto_next` takes the room away. The component goes rather than
+    // idling on an exhausted timer, so nothing ticks for the rest of the beat.
+    if !anim.advance() {
+        commands.entity(room).remove::<RoomAnim>();
+        return;
+    }
+
+    let wanted = asset_server.load(anim.frame());
+    // Written only when the handle actually changes: assigning it every frame
+    // marks the sprite dirty every frame, and Bevy rebuilds the mesh that goes
+    // with it.
+    for mut part in &mut parts {
+        if part.image.id() != wanted.id() {
+            part.image = wanted.clone();
+        }
+    }
 }
 
 pub fn game_button_system(

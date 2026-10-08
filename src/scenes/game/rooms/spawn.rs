@@ -5,7 +5,7 @@ use bevy::picking::hover::Hovered;
 use crate::scenes::game::items::ItemHotspot;
 use crate::scenes::game::rooms::components::{
     HOTSPOT_ICON_SIZE, HOTSPOT_OUTLINE_THICKNESS, HOTSPOT_OUTLINE_Z, Hotspot, HotspotAction,
-    HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomPart, RoomStory, RoomTitle,
+    HotspotIcon, HotspotOutline, OUTLINE_COLOR, Room, RoomAnim, RoomPart, RoomStory, RoomTitle,
     RoomVariant, RoomVariantIndex, RoomVariants,
 };
 use crate::scenes::game::rooms::data::RoomDef;
@@ -52,6 +52,14 @@ pub(crate) fn spawn_room(
         DespawnOnExit(GameState::Game),
     ));
     root.with_children(|parent| spawn_room_content(parent, asset_server, &first, def.interactive));
+
+    // A room that plays its own pictures is given them here, so the frame it opens
+    // on is the one its own variant already named - `room_anim_system` takes over
+    // from the next tick and there is no jump on the way in. Inserted on the root
+    // rather than on a child, because it is the room that is doing the animating.
+    if let Some(frames) = def.anim {
+        root.insert(RoomAnim::new(frames));
+    }
 }
 
 pub fn spawn_room_content(

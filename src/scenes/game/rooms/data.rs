@@ -96,6 +96,19 @@ pub(crate) struct RoomDef {
     /// the last, and the flip plays it backwards when the player goes the other
     /// way, so one list serves both arrows.
     pub flip: Option<&'static [&'static str]>,
+    /// Pictures the room plays through by itself while it stands, or `None` for
+    /// every ordinary room.
+    ///
+    /// A different thing from `flip`, and deliberately not folded into it. A pan
+    /// runs between two shots because the player pressed something, and it plays
+    /// whichever way they went. This runs because the room is a beat - there is
+    /// nothing on screen to press - so it plays forwards, once, and the room's
+    /// `auto_next` is what ends it. The lift falling is the only one: a beat with
+    /// a single shot, so there is no second shot for a pan to run between.
+    ///
+    /// The list includes the frame the room opens on, so the first entry is also
+    /// the picture before anything moves.
+    pub anim: Option<&'static [&'static str]>,
 }
 
 /// `act` is the act the player is currently in: the concierge asks for the pass
@@ -127,6 +140,11 @@ pub(crate) fn room_def(path: &'static str, act: ActId) -> RoomDef {
 /// The carousel control is in the same position for the same reason: it is asked
 /// for the frame the room opens on, and a control with no picture on it is a
 /// rectangle the player cannot read.
+///
+/// A room's own frames are here for the same reason and with nothing to soften it:
+/// the room is already standing and lit when the first of them is asked for, and
+/// there is no fade over the ones after it. A frame that has not finished loading
+/// draws nothing, so the lift's fall would stutter through holes in itself.
 pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
     rooms()
         .flat_map(|room| {
@@ -135,6 +153,7 @@ pub(crate) fn all_paths() -> impl Iterator<Item = &'static str> {
                 .map(|variant| variant.path)
                 .chain(variant_previews(room))
                 .chain(room.flip.unwrap_or(&[]).iter().copied())
+                .chain(room.anim.unwrap_or(&[]).iter().copied())
         })
         .chain(crate::scenes::game::npc::paths())
 }

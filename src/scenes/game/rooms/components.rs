@@ -102,6 +102,68 @@ pub struct RoomVariant {
 /// turns the pan into a flicker.
 pub const FLIP_FRAME_SECONDS: f32 = 1.0 / 20.0;
 
+/// How long one frame of a room's own animation stays on screen.
+///
+/// Much slower than [`FLIP_FRAME_SECONDS`] on purpose. The pan is motion-blurred
+/// and is read as a single sweep, so 20fps is right for it; the fall is a
+/// nineteen-frame sequence of a lift going down in the dark, and at 20fps it
+/// would be over in under a second and past before the sound that goes with it
+/// had properly started.
+///
+/// Chosen so nineteen frames very nearly fill the whole time the lift is on
+/// screen - the two fades either side of its `auto_next` included. A room that
+/// stands longer than its animation leaves its last frame frozen on screen, and
+/// the last frame of this one is the dark the fall is going towards, so a hold
+/// there reads as the animation having stalled rather than as a held ending.
+pub const ANIM_FRAME_SECONDS: f32 = 0.265;
+
+/// A room that plays its own pictures while it stands, without the player asking.
+///
+/// The lift's fall is the reason this exists: it is a beat, so there is no
+/// carousel to press and nothing to click, and it cannot be a pan either - a pan
+/// runs between two shots of a room, and this room has one shot and a film
+/// instead. So the room carries its frames and a system runs them.
+///
+/// Present for as long as the room is on screen. Unlike [`RoomFlip`] nothing
+/// waits on it: the room moves on by its own `auto_next`, so the last frame is
+/// simply the one still up when the transition takes the room away.
+#[derive(Component)]
+pub struct RoomAnim {
+    /// The frames, in the order the art was drawn.
+    pub frames: &'static [&'static str],
+    /// How many frames have been shown so far, the first one included.
+    shown: usize,
+    /// Time left on the frame currently on screen.
+    pub timer: Timer,
+}
+
+impl RoomAnim {
+    /// Start playing `frames`, showing the first one straight away.
+    pub fn new(frames: &'static [&'static str]) -> Self {
+        Self {
+            frames,
+            shown: 0,
+            timer: Timer::from_seconds(ANIM_FRAME_SECONDS, TimerMode::Once),
+        }
+    }
+
+    /// The frame that belongs on screen now.
+    pub fn frame(&self) -> &'static str {
+        self.frames[self.shown.min(self.frames.len() - 1)]
+    }
+
+    /// Show the next frame, or report that every frame has had its turn.
+    ///
+    /// The same shape as [`RoomFlip::advance`], and for the same reason: each
+    /// frame gets its full slot before the next replaces it, so the last one is
+    /// not stepped over by the tick that would have replaced it.
+    pub fn advance(&mut self) -> bool {
+        self.shown += 1;
+        self.timer.reset();
+        self.shown < self.frames.len()
+    }
+}
+
 /// The pan from one shot of a room to the next, playing on the room while it runs.
 ///
 /// Present only for as long as the frames are on screen: the carousel system reads

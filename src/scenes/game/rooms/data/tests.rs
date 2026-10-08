@@ -52,6 +52,11 @@ const PARKED_ASSETS: &[&str] = &[
     "tex/rooms/my_floor/door_my_home.png",
     "tex/rooms/my_floor/door_nighbor_home.png",
     "tex/rooms/my_floor/open_door_my_home.png",
+    // Sits in the lift's frame folder and is a copy of `19.png`, the frame that
+    // ends the fall. Named for whatever exported it rather than for its place in
+    // the sequence, so it was never going to be picked up by the frame list.
+    // Parked rather than deleted: it is the artist's own file to remove.
+    "tex/rooms/elevator_inside/0058.png",
 ];
 
 /// Nothing may link to a room that is not in the table: `room_def` would
@@ -454,6 +459,73 @@ fn pan_frames_are_preloaded() {
             assert!(
                 paths.contains(frame),
                 "{frame} is not preloaded, so it draws nothing when the pan reaches it",
+            );
+        }
+    }
+}
+
+/// Every frame of every room that plays its own pictures has to be in the preload
+/// list, for the pan's reason and more sharply.
+///
+/// The pan at least gets asked for by a click, and a click is something the
+/// player can wait out. These are asked for by a timer on a room that is already
+/// standing and lit, so a frame that has not arrived draws nothing at the moment
+/// the previous one goes - the fall would flicker through holes in itself, and
+/// there is no fade over it to cover the gap.
+#[test]
+fn animation_frames_are_preloaded() {
+    let paths: Vec<_> = all_paths().collect();
+
+    for room in rooms() {
+        for frame in room.anim.unwrap_or(&[]) {
+            assert!(
+                paths.contains(frame),
+                "{frame} is not preloaded, so it draws nothing when the animation reaches it",
+            );
+        }
+    }
+}
+
+/// The frames a room plays start on the picture it was opened with, so the
+/// player sees the same first frame whether the animation runs or not.
+///
+/// The room's key *is* its first variant's path and the frame list is written by
+/// hand beside it, so nothing makes the two agree. If they drift the room opens
+/// on one picture and cuts to another on the first tick - a visible jump on the
+/// frame the player has just been looking at.
+#[test]
+fn an_animated_room_opens_on_its_first_frame() {
+    for room in rooms() {
+        let Some(frames) = room.anim else {
+            continue;
+        };
+        assert!(
+            !frames.is_empty(),
+            "{} lists no frames, so there is nothing to play",
+            key_of(room),
+        );
+        assert_eq!(
+            frames[0],
+            room.variants[0].path,
+            "{} opens on a picture that is not the first frame it plays",
+            key_of(room),
+        );
+    }
+}
+
+/// An animation needs somewhere to be asked for, and nothing to be asked for it.
+///
+/// A room with no `auto_next` would sit on its last frame for good, so an
+/// animation there is a picture the player is shown once and cannot leave.
+#[test]
+fn an_animated_room_moves_on_by_itself() {
+    for room in rooms() {
+        if room.anim.is_some() {
+            assert!(
+                room.auto_next.is_some(),
+                "{} plays an animation but never moves on, so the last frame stays up \
+                 for good",
+                key_of(room),
             );
         }
     }

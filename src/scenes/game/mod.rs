@@ -77,6 +77,11 @@ impl Plugin for GamePlugin {
                 // room carries `RoomFlip` from the moment the arrow is pressed, and
                 // this only has something to advance once it does.
                 systems::room_flip_system,
+                // Independent of the two above - a room playing its own pictures
+                // is a beat, and a beat has no carousel to press and no second
+                // shot to land on - but it writes the same `RoomPart` sprite they
+                // do, so it goes after them rather than racing them.
+                systems::room_anim_system,
                 // After both, so the picture on the control swaps when the player
                 // arrives at a shot rather than when they set off towards it: a press
                 // starts the pan and leaves the shot alone.

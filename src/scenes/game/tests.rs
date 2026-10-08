@@ -14,12 +14,12 @@ use super::systems::{
 use crate::acts::{ActId, CurrentAct, Item};
 use crate::scenes::game::items::WorldItems;
 use crate::scenes::game::rooms::components::{
-    HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room, RoomFlip,
-    RoomTitle, RoomVariantIndex,
+    ANIM_FRAME_SECONDS, HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room,
+    RoomAnim, RoomFlip, RoomTitle, RoomVariantIndex,
 };
 use crate::scenes::game::rooms::data::{RoomDef, all_paths, control_target, p, room_def, rooms};
 use crate::scenes::game::ui::{CarouselArrow, spawn_game_ui};
-use crate::scenes::fade::RoomFade;
+use crate::scenes::fade::{FADE_DURATION, RoomFade};
 use crate::scenes::loading::PreloadedImages;
 use crate::scenes::game::StartRoom;
 use crate::UiScale;
@@ -723,6 +723,80 @@ fn a_pan_backwards_is_the_same_frames_in_reverse() {
     );
 }
 
+/// An animation must show every frame exactly once, in the order it was drawn.
+///
+/// The same off-by-one the pan has, and for the same reason: `advance` answers
+/// "is there another one after this", so landing on the tick that *showed* the
+/// final frame would finish without ever displaying it, and the fall would stop
+/// one step short of the dark the player is meant to end in.
+#[test]
+fn an_animation_shows_every_frame_once_in_order() {
+    let def = room_def(p::ELEVATOR, ActId::ActOne);
+    let frames = def.anim.expect("the lift plays an animation");
+    let mut anim = RoomAnim::new(frames);
+
+    let mut seen = vec![anim.frame()];
+    while anim.advance() {
+        seen.push(anim.frame());
+    }
+
+    assert_eq!(
+        seen, frames,
+        "the animation skipped or repeated a frame, so the fall jumps",
+    );
+}
+
+/// Once the frames are done the animation stops rather than running off the end.
+///
+/// A pan can stop because the player arrived somewhere; an animation has nowhere
+/// to arrive, so it just runs out. What must not happen is an index past the last
+/// frame, which is a panic on the frame after the fall finishes - and the system
+/// drops the component there, so this is the last thing it ever reads.
+#[test]
+fn a_finished_animation_stays_on_its_last_frame() {
+    let def = room_def(p::ELEVATOR, ActId::ActOne);
+    let frames = def.anim.expect("the lift plays an animation");
+    let mut anim = RoomAnim::new(frames);
+
+    while anim.advance() {}
+
+    assert_eq!(
+        anim.frame(),
+        frames[frames.len() - 1],
+        "a spent animation reads past its own frames",
+    );
+}
+
+/// The lift is a beat: a room that plays itself and then hands over on its own.
+///
+/// Worth pinning because the two halves are what make the fall work at all. It has
+/// to be a beat, or there is no `auto_next` and the player is stranded looking at
+/// the dark; and the frames have to be longer than the sound that goes with them,
+/// or the animation finishes under the player and the last second of the fall is
+/// a still picture.
+#[test]
+fn the_lift_falls_for_longer_than_its_sound() {
+    let def = room_def(p::ELEVATOR, ActId::ActOne);
+    let frames = def.anim.expect("the lift plays an animation");
+
+    assert!(!def.interactive, "the lift is a beat, so nothing is clickable");
+    let (target, seconds) = def.auto_next.expect("the lift moves on by itself");
+    assert_eq!(target, p::B_HALL, "the lift lands in the basement");
+
+    // The room is spawned inside a fade-in and leaves inside a fade-out, and the
+    // sound is killed when it ends, so the room is on screen for its `auto_next`
+    // plus a fade at each end. The animation has to fill that, not just the
+    // `auto_next` part of it.
+    let on_screen = frames.len() as f32 * ANIM_FRAME_SECONDS;
+    let visible = seconds + 2.0 * FADE_DURATION;
+    assert!(
+        on_screen > visible,
+        "the fall is over in {on_screen}s but the room stands for {visible}s, so the \
+         last {}s are a still picture",
+        visible - on_screen,
+    );
+}
+
 /// The destination is fixed when the pan starts, so the room lands where the player
 /// asked to go rather than where the frames happen to end.
 #[test]
@@ -1153,5 +1227,100 @@ fn pressing_the_control_moves_shot_picture_and_control_together() {
         picture_of(&mut app),
         p::CAROUSEL_TO_ELEVATOR,
         "the control still offers the stairs while the player is standing on them",
+    );
+}
+
+/// The lift really does run through its frames while it stands.
+///
+/// The unit tests above walk `RoomAnim` by hand, which says the bookkeeping is
+/// right but says nothing about the room: that `spawn_room` puts the component on
+/// the lift at all, that the system is in the schedule, and that it writes the
+/// handle onto the sprite that is actually on screen. All three could be wrong
+/// with every other test here still green.
+#[test]
+fn the_lift_plays_its_frames_while_it_stands() {
+    use crate::scenes::game::rooms::components::RoomPart;
+    use crate::scenes::game::rooms::spawn::spawn_room;
+    use crate::scenes::game::systems;
+
+    let def = room_def(p::ELEVATOR, ActId::ActOne);
+    let frames = def.anim.expect("the lift plays an animation").to_vec();
+
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+    app.init_asset::<Image>();
+    app.add_systems(Update, systems::room_anim_system);
+    let world = app.world_mut();
+    let asset_server = world.resource::<AssetServer>().clone();
+    spawn_room(&mut world.commands(), &asset_server, def, Vec3::ZERO);
+    app.update();
+
+    let room = {
+        let world = app.world_mut();
+        world
+            .query_filtered::<Entity, With<Room>>()
+            .iter(world)
+            .next()
+            .expect("the lift spawned")
+    };
+    assert!(
+        app.world().get::<RoomAnim>(room).is_some(),
+        "the lift spawned without the animation on it, so it stands on one picture",
+    );
+
+    // The frame the room is actually drawing, read off the sprite rather than off
+    // the component: the component is what the system reads, and the sprite is
+    // what the player sees.
+    let showing = |app: &mut App| -> String {
+        let world = app.world_mut();
+        let part = world
+            .query_filtered::<Entity, With<RoomPart>>()
+            .iter(world)
+            .next()
+            .expect("the room picture");
+        world
+            .resource::<AssetServer>()
+            .get_path(world.get::<Sprite>(part).expect("a sprite").image.id())
+            .map_or(String::new(), |path| path.to_string())
+    };
+
+    assert_eq!(
+        showing(&mut app),
+        frames[0],
+        "the lift does not open on the frame it is supposed to",
+    );
+
+    // Wind the timer forward rather than sleeping: `ANIM_FRAME_SECONDS` is a real
+    // duration and the test must not take five seconds to say what `advance`
+    // already says in the unit test above.
+    let to_next_frame = |app: &mut App| {
+        let world = app.world_mut();
+        if let Some(mut anim) = world.get_mut::<RoomAnim>(room) {
+            anim.timer = Timer::from_seconds(0.0, TimerMode::Once);
+        }
+    };
+
+    for expected in frames.iter().skip(1) {
+        to_next_frame(&mut app);
+        app.update();
+        assert_eq!(
+            showing(&mut app),
+            *expected,
+            "the lift skipped a frame or repeated one, so the fall jumps",
+        );
+    }
+
+    // Past the last frame the system takes the component off, which is what stops
+    // it reading off the end of the array for the rest of the beat.
+    to_next_frame(&mut app);
+    app.update();
+    assert!(
+        app.world().get::<RoomAnim>(room).is_none(),
+        "the finished animation is still on the room and will keep ticking",
+    );
+    assert_eq!(
+        showing(&mut app),
+        frames[frames.len() - 1],
+        "a spent animation left the lift on the wrong frame",
     );
 }
