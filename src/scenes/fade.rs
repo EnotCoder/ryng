@@ -1,6 +1,7 @@
 use crate::acts::CurrentAct;
 use crate::scenes::game::rooms::data::room_def;
 use crate::scenes::game::rooms::{components::Room, spawn::spawn_room};
+use crate::scenes::loading::LoadingOverlay;
 use crate::scenes::sound::{PlayingTransitionSound, play_transition_sound};
 use crate::state::GameState;
 use bevy::ecs::system::SystemParam;
@@ -49,13 +50,28 @@ pub fn spawn_fade_overlay(commands: &mut Commands) {
 // them tells you the whole of what happens during that phase.
 
 /// Ticks the timer that hands a non-interactive room over to the next one.
-pub fn auto_next_system(time: Res<Time>, mut fade: ResMut<RoomFade>) {
+///
+/// Held while the preload overlay is up, for the same reason
+/// [`crate::scenes::game::systems::room_anim_system`] holds its frames: a room is
+/// spawned before its pictures have arrived, and a beat that counts down under
+/// the overlay is over before the player has seen any of it. The timer is put
+/// back rather than dropped, which is what holds the beat at full length instead
+/// of shortening it by however long the load took.
+pub fn auto_next_system(
+    time: Res<Time>,
+    mut fade: ResMut<RoomFade>,
+    loading: Query<Entity, With<LoadingOverlay>>,
+) {
     let FadePhase::Idle = fade.phase else {
         return;
     };
     let Some((path, mut timer)) = fade.auto_timer.take() else {
         return;
     };
+    if !loading.is_empty() {
+        fade.auto_timer = Some((path, timer));
+        return;
+    }
     timer.tick(time.delta());
     if timer.is_finished() {
         fade.pending = Some(path);

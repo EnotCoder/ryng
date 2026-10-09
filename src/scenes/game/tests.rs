@@ -14,8 +14,8 @@ use super::systems::{
 use crate::acts::{ActId, CurrentAct, Item};
 use crate::scenes::game::items::WorldItems;
 use crate::scenes::game::rooms::components::{
-    ANIM_FRAME_SECONDS, HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room,
-    RoomAnim, RoomFlip, RoomTitle, RoomVariantIndex,
+    ANIM_SECONDS, HOTSPOT_OUTLINE_THICKNESS, Hotspot, HotspotDef, HotspotOutline, Room, RoomAnim,
+    RoomFlip, RoomTitle, RoomVariantIndex,
 };
 use crate::scenes::game::rooms::data::{RoomDef, all_paths, control_target, p, room_def, rooms};
 use crate::scenes::game::ui::{CarouselArrow, spawn_game_ui};
@@ -787,14 +787,113 @@ fn the_lift_falls_for_longer_than_its_sound() {
     // sound is killed when it ends, so the room is on screen for its `auto_next`
     // plus a fade at each end. The animation has to fill that, not just the
     // `auto_next` part of it.
-    let on_screen = frames.len() as f32 * ANIM_FRAME_SECONDS;
+    // The room is spawned inside a fade-in and leaves inside a fade-out, and the
+    // sound is killed when it ends, so the room is on screen for its `auto_next`
+    // plus a fade at each end. The animation has to fill that, not just the
+    // `auto_next` part of it.
     let visible = seconds + 2.0 * FADE_DURATION;
-    assert!(
-        on_screen > visible,
-        "the fall is over in {on_screen}s but the room stands for {visible}s, so the \
-         last {}s are a still picture",
-        visible - on_screen,
+    assert_eq!(
+        ANIM_SECONDS, visible,
+        "the animation is {ANIM_SECONDS}s but the lift stands for {visible}s, so the \
+         fall and the room no longer end together",
     );
+
+    let anim = RoomAnim::new(frames);
+    let on_screen = anim.frame_seconds() * frames.len() as f32;
+    assert!(
+        (on_screen - visible).abs() < 0.001,
+        "the frames add up to {on_screen}s rather than the {visible}s the room is up",
+    );
+}
+
+/// Nothing is played while the preload overlay is up, and the timer does not
+/// advance either.
+///
+/// This is the bug the lift actually shipped with: the room is spawned before
+/// its pictures have arrived, so an animation that ticks from the spawn spends
+/// itself behind the overlay. The player then arrives at a room that is already
+/// on its last frame - the fall over before it started - and every frame of the
+/// art is spent on a black screen.
+///
+/// Held at the first frame rather than dropped, so the check is that the picture
+/// has not moved *and* that the component is still there to move it later.
+#[test]
+fn the_fall_waits_for_the_loading_overlay() {
+    use crate::scenes::game::rooms::components::RoomPart;
+    use crate::scenes::game::rooms::spawn::spawn_room;
+    use crate::scenes::game::systems;
+    use crate::scenes::loading::LoadingOverlay;
+
+    let def = room_def(p::ELEVATOR, ActId::ActOne);
+    let frames = def.anim.expect("the lift plays an animation").to_vec();
+
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, AssetPlugin::default()));
+    app.init_asset::<Image>();
+    app.add_systems(Update, systems::room_anim_system);
+    let world = app.world_mut();
+    let asset_server = world.resource::<AssetServer>().clone();
+    spawn_room(&mut world.commands(), &asset_server, def, Vec3::ZERO);
+    app.update();
+
+    let room = {
+        let world = app.world_mut();
+        world
+            .query_filtered::<Entity, With<Room>>()
+            .iter(world)
+            .next()
+            .expect("the lift spawned")
+    };
+    let showing = |app: &mut App| -> String {
+        let world = app.world_mut();
+        let part = world
+            .query_filtered::<Entity, With<RoomPart>>()
+            .iter(world)
+            .next()
+            .expect("the room picture");
+        world
+            .resource::<AssetServer>()
+            .get_path(world.get::<Sprite>(part).expect("a sprite").image.id())
+            .map_or(String::new(), |path| path.to_string())
+    };
+
+    // The overlay is what the player is looking at, and it is up for the whole
+    // time the pictures take to arrive.
+    let overlay = app.world_mut().spawn(LoadingOverlay::blocking()).id();
+
+    // Wind the timer every frame. If the system ticks through the overlay it
+    // runs the whole animation here, and the player arrives at the end of it.
+    for _ in 0..frames.len() * 2 {
+        if let Some(mut anim) = app.world_mut().get_mut::<RoomAnim>(room) {
+            anim.timer = Timer::from_seconds(0.0, TimerMode::Once);
+        }
+        app.update();
+    }
+
+    assert_eq!(
+        showing(&mut app),
+        frames[0],
+        "the fall played out behind the loading overlay, so the player only ever sees \
+         the last frame",
+    );
+    assert!(
+        app.world().get::<RoomAnim>(room).is_some(),
+        "the animation was dropped rather than held, so it cannot finish either",
+    );
+
+    // With the overlay gone it plays.
+    app.world_mut().entity_mut(overlay).despawn();
+    for expected in frames.iter().skip(1).take(3) {
+        if let Some(mut anim) = app.world_mut().get_mut::<RoomAnim>(room) {
+            anim.timer = Timer::from_seconds(0.0, TimerMode::Once);
+        }
+        app.update();
+        assert_eq!(
+            showing(&mut app),
+            *expected,
+            "the animation did not start once the player could see the room",
+        );
+    }
 }
 
 /// The destination is fixed when the pan starts, so the room lands where the player
@@ -1290,7 +1389,7 @@ fn the_lift_plays_its_frames_while_it_stands() {
         "the lift does not open on the frame it is supposed to",
     );
 
-    // Wind the timer forward rather than sleeping: `ANIM_FRAME_SECONDS` is a real
+    // Wind the timer forward rather than sleeping: a frame is a real
     // duration and the test must not take five seconds to say what `advance`
     // already says in the unit test above.
     let to_next_frame = |app: &mut App| {

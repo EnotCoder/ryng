@@ -17,7 +17,7 @@ pub const F1_STAIRS: &str = "tex/rooms/floor_1/stairs_1_floor.png";
 /// A frame rather than a room of its own: the room is looked up by the picture it
 /// opens on, and the animation's own list starts here anyway, so naming the
 /// folder once in `act_one` beats naming frame one in two places.
-pub const ELEVATOR: &str = "tex/rooms/elevator_inside/1.png";
+pub const ELEVATOR: &str = "tex/rooms/elevator_inside/1.jpg";
 pub const B_HALL: &str = "tex/rooms/basement/basement_with_elevator.png";
 pub const B_CORRIDOR: &str = "tex/rooms/basement/basement_stairs.png";
 pub const B_DEEP: &str = "tex/rooms/basement/basement_stairs_center_room.png";

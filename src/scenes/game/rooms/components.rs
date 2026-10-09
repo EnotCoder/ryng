@@ -102,20 +102,22 @@ pub struct RoomVariant {
 /// turns the pan into a flicker.
 pub const FLIP_FRAME_SECONDS: f32 = 1.0 / 20.0;
 
-/// How long one frame of a room's own animation stays on screen.
+/// How long a room's animation takes, in seconds.
 ///
-/// Much slower than [`FLIP_FRAME_SECONDS`] on purpose. The pan is motion-blurred
-/// and is read as a single sweep, so 20fps is right for it; the fall is a
-/// nineteen-frame sequence of a lift going down in the dark, and at 20fps it
-/// would be over in under a second and past before the sound that goes with it
-/// had properly started.
+/// The whole animation's length rather than a per-frame time, and then divided by
+/// the number of frames when the component is built. A per-frame constant cannot
+/// be right for both of the things that decide how many frames there are - the
+/// art and the room the player is standing in. Nineteen frames at a rate chosen
+/// for fifty-eight play in under two seconds and leave the rest of the beat on a
+/// still, and the same rate over a shorter list runs past the room's own
+/// `auto_next` and gets cut off mid-fall. Deriving one from the other means a
+/// list of any length fills its room exactly.
 ///
-/// Chosen so nineteen frames very nearly fill the whole time the lift is on
-/// screen - the two fades either side of its `auto_next` included. A room that
-/// stands longer than its animation leaves its last frame frozen on screen, and
-/// the last frame of this one is the dark the fall is going towards, so a hold
-/// there reads as the animation having stalled rather than as a held ending.
-pub const ANIM_FRAME_SECONDS: f32 = 0.265;
+/// Deliberately not [`FLIP_FRAME_SECONDS`], which is a per-frame time because a
+/// pan is a fixed piece of art with a fixed length. The lift's animation is
+/// matched to the sound that goes with it instead, and the sound is matched to
+/// the room, so this number belongs to the room rather than to the picture.
+pub const ANIM_SECONDS: f32 = 5.0;
 
 /// A room that plays its own pictures while it stands, without the player asking.
 ///
@@ -139,12 +141,28 @@ pub struct RoomAnim {
 
 impl RoomAnim {
     /// Start playing `frames`, showing the first one straight away.
+    ///
+    /// The list is spread over [`ANIM_SECONDS`] however long it is. An empty list
+    /// would divide by zero, so it counts as one frame: a room carrying an empty
+    /// animation has nothing to play either way, and the guard is what keeps an
+    /// infinity out of the timer.
     pub fn new(frames: &'static [&'static str]) -> Self {
+        let per_frame = ANIM_SECONDS / frames.len().max(1) as f32;
         Self {
             frames,
             shown: 0,
-            timer: Timer::from_seconds(ANIM_FRAME_SECONDS, TimerMode::Once),
+            timer: Timer::from_seconds(per_frame, TimerMode::Once),
         }
+    }
+
+    /// How long one frame lasts, for the list this was built with.
+    ///
+    /// Exposed so a test can check the timing without reaching past the timer.
+    /// That the answer is a function of the frame count is the whole point, and
+    /// it is otherwise only visible from outside as a number that happens to be
+    /// right today.
+    pub fn frame_seconds(&self) -> f32 {
+        ANIM_SECONDS / self.frames.len().max(1) as f32
     }
 
     /// The frame that belongs on screen now.

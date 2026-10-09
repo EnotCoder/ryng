@@ -10,7 +10,11 @@ crate-type = ["lib", "cdylib"]
 
 
 [dependencies]
-bevy = { version = "0.19.1", features = ["android-game-activity", "mp3"] }
+# `jpeg` is for the elevator fall's frames: they are `.jpg` rather than `.png`
+# because fifty-eight of them at PNG was 71MB against 25 at JPG. Bevy's image
+# loader rejects a codec whose feature is off, so a room picture in any format
+# not listed here loads as an error rather than as a picture.
+bevy = { version = "0.19.1", features = ["android-game-activity", "mp3", "jpeg"] }
 
 [profile.release]
 lto = "thin"

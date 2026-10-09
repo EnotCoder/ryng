@@ -125,10 +125,19 @@ pub(super) static ROOMS: &[RoomDef] = &[
     // `B_HALL` in act 2 is where they land - that room, not this one, carries the
     // act change.
     //
-    // Nineteen frames rather than one picture, played by `room_anim_system` while
-    // the room stands. The folder is a literal here rather than a `p` constant for
-    // the reason `flip!` is: `concat!` will not take one, and the frames are named
-    // only here.
+    // Fifty-eight frames rather than one picture, played by `room_anim_system`
+    // while the room stands. The folder is a literal here rather than a `p`
+    // constant for the reason `flip!` is: `concat!` will not take one, and the
+    // frames are named only here.
+    //
+    // The frames are `.jpg` where every other room picture is `.png`, because
+    // fifty-eight of these at PNG was 71MB and at JPG is 25. None of them carry
+    // an alpha channel, so nothing is lost but the size - and `jpeg` has to be on
+    // in `Cargo.toml` or Bevy's image loader refuses the format outright.
+    //
+    // How fast they play is not written down here. `ANIM_SECONDS` spreads whatever
+    // list it is given across the time the room is up, so re-exporting this at a
+    // different frame count needs no edit here - only the list.
     //
     // 4.3 seconds is the sound's length, not a round number. The fall sound starts
     // when the room does and is killed when the next one begins, and the room is
@@ -144,10 +153,16 @@ pub(super) static ROOMS: &[RoomDef] = &[
         Music::Indoors,
         anim!(
             "tex/rooms/elevator_inside",
-            "1.png", "2.png", "3.png", "4.png", "5.png",
-            "6.png", "7.png", "8.png", "9.png", "10.png",
-            "11.png", "12.png", "13.png", "14.png", "15.png",
-            "16.png", "17.png", "18.png", "19.png"
+            "1.jpg", "2.jpg", "3.jpg", "4.jpg", "5.jpg", "6.jpg",
+            "7.jpg", "8.jpg", "9.jpg", "10.jpg", "11.jpg", "12.jpg",
+            "13.jpg", "14.jpg", "15.jpg", "16.jpg", "17.jpg", "18.jpg",
+            "19.jpg", "20.jpg", "21.jpg", "22.jpg", "23.jpg", "24.jpg",
+            "25.jpg", "26.jpg", "27.jpg", "28.jpg", "29.jpg", "30.jpg",
+            "31.jpg", "32.jpg", "33.jpg", "34.jpg", "35.jpg", "36.jpg",
+            "37.jpg", "38.jpg", "39.jpg", "40.jpg", "41.jpg", "42.jpg",
+            "43.jpg", "44.jpg", "45.jpg", "46.jpg", "47.jpg", "48.jpg",
+            "49.jpg", "50.jpg", "51.jpg", "52.jpg", "53.jpg", "54.jpg",
+            "55.jpg", "56.jpg", "57.jpg", "58.jpg"
         ),
         Some((p::B_HALL, 4.3))
     ),

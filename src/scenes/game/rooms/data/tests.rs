@@ -52,11 +52,6 @@ const PARKED_ASSETS: &[&str] = &[
     "tex/rooms/my_floor/door_my_home.png",
     "tex/rooms/my_floor/door_nighbor_home.png",
     "tex/rooms/my_floor/open_door_my_home.png",
-    // Sits in the lift's frame folder and is a copy of `19.png`, the frame that
-    // ends the fall. Named for whatever exported it rather than for its place in
-    // the sequence, so it was never going to be picked up by the frame list.
-    // Parked rather than deleted: it is the artist's own file to remove.
-    "tex/rooms/elevator_inside/0058.png",
 ];
 
 /// Nothing may link to a room that is not in the table: `room_def` would

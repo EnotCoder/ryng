@@ -5,8 +5,25 @@ use crate::state::GameState;
 
 #[derive(Component)]
 pub struct LoadingOverlay {
-    pending: Vec<Handle<Image>>,
-    fade: Option<Timer>,
+    /// Visible only through the real spawner; a test that needs an overlay up can
+    /// ask for this rather than reaching into the fields.
+    pub(crate) pending: Vec<Handle<Image>>,
+    pub(crate) fade: Option<Timer>,
+}
+
+impl LoadingOverlay {
+    /// An overlay that is up and holding nothing - already clear, but present.
+    ///
+    /// For the systems that treat "an overlay exists" as "the room is not visible
+    /// yet", which is a different question from "are the pictures here". A test
+    /// needs the first without the second, and the fields are not public because
+    /// nothing in the game should be building one by hand.
+    pub fn blocking() -> Self {
+        Self {
+            pending: Vec::new(),
+            fade: None,
+        }
+    }
 }
 
 /// A handle to every picture the game will ever show, for as long as it is running.

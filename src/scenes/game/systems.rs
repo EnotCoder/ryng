@@ -19,6 +19,7 @@ use crate::scenes::game::rooms::components::{
 use crate::scenes::game::rooms::data::{RoomDef, control_target};
 use crate::scenes::game::rooms::spawn::spawn_room_content;
 use crate::scenes::game::ui::{CarouselArrow, GameAction};
+use crate::scenes::loading::LoadingOverlay;
 use crate::state::GameState;
 
 /// The room drifts up and down a few pixels so a still picture is not perfectly
@@ -490,6 +491,7 @@ pub fn room_flip_system(
 pub fn room_anim_system(
     mut rooms: AnimRoom,
     mut parts: AnimPicture,
+    loading: Query<Entity, With<LoadingOverlay>>,
     mut commands: Commands,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
@@ -497,6 +499,27 @@ pub fn room_anim_system(
     let Ok((room, mut anim)) = rooms.single_mut() else {
         return;
     };
+
+    // Nothing is played while the preload overlay is up, and - the point of it -
+    // the timer is not advanced either.
+    //
+    // The room is spawned before its pictures have finished arriving, and the
+    // overlay is what is on screen until they do. Ticking through that window
+    // spends the whole animation behind the overlay: the frames go past while the
+    // player is looking at a black screen, the room comes out of the fade already
+    // on its last one, and the fall is over before it has started.
+    //
+    // The lift is the first room to show this because it is the only one whose
+    // pictures take longer to load than the beat is long - fifty-eight of them
+    // against four, which is a wait measured in seconds rather than in frames.
+    //
+    // Held at the first frame rather than dropped, because the room's `auto_next`
+    // has the same problem and is fixed the same way, and this is what lets the
+    // two of them start together.
+    if !loading.is_empty() {
+        return;
+    }
+
     if !anim.timer.tick(time.delta()).just_finished() {
         return;
     }
